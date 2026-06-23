@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env.local
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# InsightFace model cache (large binary, don't commit)
+~/.insightface/
+backend/.insightface/
+
+# YOLOv8 model weights
+*.pt
+*.onnx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# AI tool session files (do not commit these)
+.lovable/
+.cursor/
+.antigravity/
+
+# Temp / output
+*.log
+*.tmp
+tmp/

@@ -1,0 +1,42 @@
+# SensePro+ Backend Dependencies
+# Install: pip install -r requirements.txt
+
+# ─── Web framework ─────────────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+websockets==12.0
+
+# ─── Vision ─────────────────────────────────────────────────────────────────
+insightface==0.7.3          # SCRFD + ArcFace (buffalo_l)
+onnxruntime==1.17.3         # CPU inference (no GPU needed for 1 classroom)
+ultralytics==8.2.0          # YOLOv8n (phone/person detection)
+opencv-python-headless==4.9.0.80
+numpy==1.26.4
+Pillow==10.3.0
+
+# ByteTrack — install from source (no stable pip package)
+# pip install git+https://github.com/ifzhang/ByteTrack.git
+# OR use the laptrack wrapper:
+laptrack==0.10.0            # lightweight ByteTrack-compatible tracker
+
+# ─── Database ───────────────────────────────────────────────────────────────
+supabase==2.4.2
+postgrest==0.16.6
+realtime==1.0.6
+
+# ─── Auth / Config ──────────────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.1
+pydantic==2.7.1
+pydantic-settings==2.2.1
+
+# ─── PDF report generation ──────────────────────────────────────────────────
+reportlab==4.1.0
+Jinja2==3.1.4
+
+# ─── Testing ────────────────────────────────────────────────────────────────
+pytest==8.2.0
+pytest-asyncio==0.23.6
+httpx==0.27.0

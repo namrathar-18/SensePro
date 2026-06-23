@@ -1,0 +1,55 @@
+{
+  "_comment": "Fill this in during the Week-4 evaluation session. One entry per volunteer.",
+  "session_id": "REPLACE-WITH-ACTUAL-SESSION-UUID",
+  "date": "2024-XX-XX",
+  "evaluators": ["Vishwas", "Member 2", "Member 3"],
+  "conditions": {
+    "room": "CHRIST University Lab",
+    "lighting": "normal fluorescent",
+    "camera_distance_m": 4,
+    "students_enrolled": 15
+  },
+  "students": {
+    "STUDENT-UUID-1": {
+      "full_name": "Volunteer 1",
+      "zone": "front",
+      "actually_present_s": 2700,
+      "notes": "Wore glasses, front row left"
+    },
+    "STUDENT-UUID-2": {
+      "full_name": "Volunteer 2",
+      "zone": "back",
+      "actually_present_s": 2700,
+      "notes": "Back row, partially obscured"
+    },
+    "STUDENT-UUID-3": {
+      "full_name": "Volunteer 3 (left early)",
+      "zone": "middle",
+      "actually_present_s": 900,
+      "notes": "Left at 15 min mark intentionally"
+    }
+  },
+  "proctor_events": [
+    {
+      "type": "phone",
+      "ts": 1700000100,
+      "student_id": "STUDENT-UUID-1",
+      "actual": true,
+      "notes": "Phone was placed on desk at this timestamp"
+    },
+    {
+      "type": "gaze",
+      "ts": 1700000200,
+      "student_id": "STUDENT-UUID-2",
+      "actual": false,
+      "notes": "Student was writing — should have been suppressed"
+    },
+    {
+      "type": "gaze",
+      "ts": 1700000300,
+      "student_id": "STUDENT-UUID-3",
+      "actual": true,
+      "notes": "Student was genuinely looking sideways"
+    }
+  ]
+}

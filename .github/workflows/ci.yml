@@ -1,0 +1,120 @@
+name: SensePro+ CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── Backend tests ─────────────────────────────────────────────────────────
+  backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          # Install CPU-only onnxruntime (no GPU in CI)
+          pip install onnxruntime==1.17.3
+          # Install insightface without downloading models in CI
+          pip install insightface==0.7.3 || true
+          pip install -r requirements.txt
+
+      - name: Set dummy env vars
+        run: |
+          echo "SUPABASE_URL=https://test.supabase.co"      >> $GITHUB_ENV
+          echo "SUPABASE_SERVICE_KEY=test-key"              >> $GITHUB_ENV
+          echo "SUPABASE_ANON_KEY=test-anon"                >> $GITHUB_ENV
+          echo "JWT_SECRET=test-secret-32-chars-long-here!" >> $GITHUB_ENV
+
+      - name: Run tests (unit only — no model download)
+        run: |
+          pytest tests/test_presence_fsm.py tests/test_vnei.py tests/test_proctor.py tests/test_enrollment.py -v --tb=short
+        env:
+          PYTHONDONTWRITEBYTECODE: 1
+
+  # ─── Frontend type-check & build ─────────────────────────────────────────
+  frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+        env:
+          VITE_SUPABASE_URL: https://test.supabase.co
+          VITE_SUPABASE_ANON_KEY: test-anon
+          VITE_API_URL: http://localhost:8000/api/v1
+          VITE_WS_URL: ws://localhost:8000/ws/capture
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://test.supabase.co
+          VITE_SUPABASE_ANON_KEY: test-anon
+          VITE_API_URL: http://localhost:8000/api/v1
+          VITE_WS_URL: ws://localhost:8000/ws/capture
+
+  # ─── Audit log integrity smoke test ──────────────────────────────────────
+  audit-schema:
+    name: SQL Schema Lint
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: supabase/postgres:15.1.0.147
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply migrations
+        run: |
+          # Install pgvector
+          psql postgresql://postgres:postgres@localhost:5432/postgres \
+            -c "CREATE EXTENSION IF NOT EXISTS vector;" || true
+          # Run init migration (skip RLS which needs supabase-specific extensions)
+          psql postgresql://postgres:postgres@localhost:5432/postgres \
+            -f supabase/migrations/0001_init.sql
+
+      - name: Verify audit log hash chain trigger exists
+        run: |
+          psql postgresql://postgres:postgres@localhost:5432/postgres \
+            -c "SELECT trigger_name FROM information_schema.triggers WHERE trigger_name = 'trg_audit_hash';" \
+            | grep -q "trg_audit_hash"
+          echo "✓ Audit hash chain trigger verified"
