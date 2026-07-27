@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Check, Link2, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, Check, Link2, QrCode, ShieldCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   fetchAuditLive, fetchConsentsLive, fetchDevicesLive, fetchUsersLive,
 } from "@/lib/data/live";
 import type { AuditEntry, ConsentRecord, DeviceRow, UserRow } from "@/lib/data/types";
+import { useQrEnabled } from "@/lib/qr-settings";
 
 export const Route = createFileRoute("/_shell/admin")({
   head: () => ({
@@ -24,6 +25,7 @@ function AdminPage() {
   const [consents, setConsents] = useState<ConsentRecord[]>([]);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [deletionQ, setDeletionQ] = useState<(ConsentRecord & { requested_at: string })[]>([]);
+  const [qrOn, setQrOn] = useQrEnabled();
 
   useEffect(() => {
     fetchDevicesLive().then(setDevices).catch(() => {});
@@ -44,6 +46,40 @@ function AdminPage() {
 
   return (
     <div className="space-y-6">
+      {/* Feature toggles */}
+      <section className="glass-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)]">
+            <QrCode className="h-5 w-5 text-[color:var(--primary)]" />
+          </div>
+          <div>
+            <div className="text-[15px] font-semibold text-[color:var(--ink)]">
+              QR check-in for unverified students
+            </div>
+            <div className="mt-0.5 max-w-xl text-[13px] text-[color:var(--muted)]">
+              When on, any student the camera can't confidently verify gets a rotating QR on the
+              teacher screen. They must scan within 30 seconds or are auto-marked absent.
+            </div>
+          </div>
+        </div>
+        <button
+          role="switch"
+          aria-checked={qrOn}
+          onClick={() => setQrOn(!qrOn)}
+          className={cn(
+            "sp-focus relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors",
+            qrOn ? "bg-[color:var(--primary)]" : "bg-[color:var(--line)]",
+          )}
+        >
+          <span
+            className={cn(
+              "inline-block h-5 w-5 transform rounded-full bg-white transition-transform",
+              qrOn ? "translate-x-6" : "translate-x-1",
+            )}
+          />
+        </button>
+      </section>
+
       <div className="flex items-center gap-1 rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)] p-1">
         {TABS.map((t) => (
           <button

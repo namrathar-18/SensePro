@@ -16,6 +16,8 @@ import type { AttendanceState, RosterEntry } from "@/lib/data/types";
 import { CLASS_ROSTER } from "@/lib/data/class-roster";
 import { exportSessionPdf } from "@/lib/data/report";
 import { ProctorReviewPanel } from "@/components/ProctorReviewPanel";
+import { QrVerification } from "@/components/sp/QrVerification";
+import { useQrEnabled } from "@/lib/qr-settings";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -167,6 +169,24 @@ function TeacherPage() {
   const filterCount = (k: "ALL" | AttendanceState) =>
     k === "ALL" ? total : counts[k];
 
+  // Admin-toggled QR check-in for students the camera couldn't verify.
+  const [qrOn] = useQrEnabled();
+  const unverified = useMemo(
+    () =>
+      roster
+        .filter((r) => r.state === "UNVERIFIED")
+        .map((r) => ({
+          student_id: r.student_id,
+          full_name: (r as unknown as { full_name?: string }).full_name ?? r.student_id,
+        })),
+    [roster],
+  );
+  const resolveQr = useCallback((id: string, state: AttendanceState) => {
+    setRoster((prev) =>
+      prev.map((r) => (r.student_id === id ? ({ ...r, state } as RosterEntry) : r)),
+    );
+  }, []);
+
   return (
     <div className="space-y-8">
       {/* KPI row */}
@@ -187,6 +207,10 @@ function TeacherPage() {
           hint="Awaiting review"
         />
       </div>
+
+      {qrOn && unverified.length > 0 && (
+        <QrVerification students={unverified} onResolve={resolveQr} />
+      )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         {/* Roster */}

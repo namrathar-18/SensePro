@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LandingRouteImport } from './routes/landing'
 import { Route as CaptureRouteImport } from './routes/capture'
@@ -24,6 +25,11 @@ import { Route as ShellManagementRouteImport } from './routes/_shell.management'
 import { Route as ShellEnrollmentRouteImport } from './routes/_shell.enrollment'
 import { Route as ShellAdminRouteImport } from './routes/_shell.admin'
 
+const VerifyRoute = VerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/capture': typeof CaptureRoute
   '/landing': typeof LandingRoute
   '/login': typeof LoginRoute
+  '/verify': typeof VerifyRoute
   '/admin': typeof ShellAdminRoute
   '/enrollment': typeof ShellEnrollmentRoute
   '/management': typeof ShellManagementRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByTo {
   '/capture': typeof CaptureRoute
   '/landing': typeof LandingRoute
   '/login': typeof LoginRoute
+  '/verify': typeof VerifyRoute
   '/admin': typeof ShellAdminRoute
   '/enrollment': typeof ShellEnrollmentRoute
   '/management': typeof ShellManagementRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/capture': typeof CaptureRoute
   '/landing': typeof LandingRoute
   '/login': typeof LoginRoute
+  '/verify': typeof VerifyRoute
   '/_shell/admin': typeof ShellAdminRoute
   '/_shell/enrollment': typeof ShellEnrollmentRoute
   '/_shell/management': typeof ShellManagementRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
     | '/capture'
     | '/landing'
     | '/login'
+    | '/verify'
     | '/admin'
     | '/enrollment'
     | '/management'
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/capture'
     | '/landing'
     | '/login'
+    | '/verify'
     | '/admin'
     | '/enrollment'
     | '/management'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/capture'
     | '/landing'
     | '/login'
+    | '/verify'
     | '/_shell/admin'
     | '/_shell/enrollment'
     | '/_shell/management'
@@ -196,10 +208,18 @@ export interface RootRouteChildren {
   CaptureRoute: typeof CaptureRoute
   LandingRoute: typeof LandingRoute
   LoginRoute: typeof LoginRoute
+  VerifyRoute: typeof VerifyRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify': {
+      id: '/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof VerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -333,6 +353,7 @@ const rootRouteChildren: RootRouteChildren = {
   CaptureRoute: CaptureRoute,
   LandingRoute: LandingRoute,
   LoginRoute: LoginRoute,
+  VerifyRoute: VerifyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
