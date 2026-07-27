@@ -83,8 +83,8 @@ function LoginPage() {
             zoom={3}
             backgroundGlow={isDark ? 0.2 : 0.1}
             opacity={isDark ? 0.45 : 0.25}
-            mouseInteraction={true}
-            mouseStrength={isDark ? 0.3 : 0.2}
+            mouseInteraction={false}
+            mouseStrength={0}
             mouseRadius={0.7}
             mixBlendMode={isDark ? "screen" : "multiply"}
           />

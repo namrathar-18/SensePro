@@ -20,7 +20,7 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { to: "/capture", label: "Capture", icon: Radio, mono: "CAP", roles: ["teacher", "admin"] },
+  { to: "/start", label: "New Session", icon: Radio, mono: "NEW", roles: ["teacher", "admin"] },
   { to: "/teacher", label: "Teacher", icon: Users, mono: "TCH", roles: ["teacher", "admin"] },
   { to: "/sessions", label: "Sessions", icon: ClipboardList, mono: "SES", roles: ["teacher", "admin"] },
   { to: "/proctor", label: "Proctor", icon: ShieldAlert, mono: "PRO", roles: ["teacher", "proctor", "admin"] },

@@ -85,6 +85,28 @@ function CapturePage() {
   const [rosterHint] = useState({ enrolled: 53 });
   const sessionIdRef = useRef<string | null>(null);
 
+  // Session context comes from the setup screen (/start) via the URL. Opening
+  // /capture directly falls back to sensible defaults.
+  const [sessionInfo] = useState(() => {
+    const p =
+      typeof window === "undefined"
+        ? new URLSearchParams()
+        : new URLSearchParams(window.location.search);
+    return {
+      title: p.get("title") || "Live session",
+      mode: (p.get("mode") === "exam" ? "exam" : "lecture") as "lecture" | "exam",
+      section: p.get("section") || "4MCA-B",
+      room: p.get("room") || "Laptop webcam",
+    };
+  });
+
+  // Adopt a session id created on the setup screen so we don't open a second one.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sid = new URLSearchParams(window.location.search).get("session_id");
+    if (sid) sessionIdRef.current = sid;
+  }, []);
+
   // Demo helper: ?demo=stale seeds a frozen roster + reconnecting state so the
   // stale-roster watermark can be reviewed without a real inference server.
   useEffect(() => {
@@ -361,22 +383,24 @@ function CapturePage() {
       setElapsed(0);
       setPresent([]);
       setRunning(true);
-      // Open a class session so presence + proctor + engagement persist. If the
-      // backend/Supabase isn't configured this fails quietly — recognition still
-      // runs live, just without persistence.
-      try {
-        const res = await fetch(`${apiBase()}/v1/sessions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            class_section: "4MCA-B",
-            subject: "Live demo session",
-            mode: captureMode(),
-          }),
-        });
-        sessionIdRef.current = res.ok ? (await res.json()).id : null;
-      } catch {
-        sessionIdRef.current = null;
+      // Reuse the session created on the setup screen; only open one here if the
+      // user came straight to /capture. Failing quietly keeps the camera live
+      // (recognition still runs) even when the backend isn't persisting.
+      if (!sessionIdRef.current) {
+        try {
+          const res = await fetch(`${apiBase()}/v1/sessions`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              class_section: sessionInfo.section,
+              subject: sessionInfo.title,
+              mode: sessionInfo.mode,
+            }),
+          });
+          sessionIdRef.current = res.ok ? (await res.json()).id : null;
+        } catch {
+          sessionIdRef.current = null;
+        }
       }
       openSocket();
       startSending();
@@ -384,7 +408,7 @@ function CapturePage() {
       const message = err instanceof Error ? err.message : "Camera unavailable";
       setPermError(message);
     }
-  }, [deviceId, openSocket, startSending]);
+  }, [deviceId, openSocket, startSending, sessionInfo]);
 
   const stop = useCallback(() => {
     const ws = wsRef.current;
@@ -448,12 +472,24 @@ function CapturePage() {
           >
             <Camera className="h-4 w-4 text-white" />
           </div>
-          <div>
-            <div className="font-display text-xl font-extrabold tracking-tight text-[color:var(--ink)]">
-              MCA-II · Distributed Systems
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="truncate font-display text-xl font-extrabold tracking-tight text-[color:var(--ink)]">
+                {sessionInfo.section} · {sessionInfo.title}
+              </div>
+              <span
+                className={cn(
+                  "shrink-0 rounded px-1.5 py-0.5 font-mono-nums text-[9px] uppercase tracking-[0.14em]",
+                  sessionInfo.mode === "exam"
+                    ? "bg-[color:var(--bad)]/15 text-[color:var(--bad)]"
+                    : "bg-[color:var(--primary)]/15 text-[color:var(--primary)]",
+                )}
+              >
+                {sessionInfo.mode}
+              </span>
             </div>
-            <div className="font-mono-nums text-[11px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
-              Room 201 · Board Kiosk · SensePro+
+            <div className="truncate font-mono-nums text-[11px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+              {sessionInfo.room} · SensePro+
             </div>
           </div>
         </div>

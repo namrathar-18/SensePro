@@ -13,3 +13,7 @@ dist/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
+
+# Face embeddings (biometric data) — never commit
+enrollments.json
+*.enrollments.json
