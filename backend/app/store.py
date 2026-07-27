@@ -273,6 +273,11 @@ class SessionRecorder:
     writer: PresenceWriter
     session_id: str
     session_start: datetime
+    # reg_no -> students.id (UUID). The pipeline identifies students by register
+    # number (the enrolment key), but presence_intervals.student_id is the UUID
+    # FK; without this map the DB rejects every write. Empty = write ids as-is
+    # (the offline/stub loop, where nothing actually persists).
+    student_id_map: dict[str, str] = field(default_factory=dict)
     _open: dict[str, PresenceInterval] = field(default_factory=dict)
 
     def _abs(self, rel_ts: float) -> datetime:
@@ -281,12 +286,17 @@ class SessionRecorder:
     def record(self, transitions: list[tuple[str, str]], rel_ts: float) -> None:
         at = self._abs(rel_ts)
         for student_id, state in transitions:
+            # Skip students we can't resolve to a DB row when a map is present,
+            # so a stray id never triggers a rejected write.
+            db_id = self.student_id_map.get(student_id) if self.student_id_map else student_id
+            if db_id is None:
+                continue
             prev = self._open.pop(student_id, None)
             if prev is not None:
                 prev.ended_at = at
                 self.writer.close_interval(prev)
             new = PresenceInterval(
-                session_id=self.session_id, student_id=student_id, state=state, started_at=at
+                session_id=self.session_id, student_id=db_id, state=state, started_at=at
             )
             self._open[student_id] = new
             self.writer.open_interval(new)

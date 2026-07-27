@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     engagement_window_s: float = 60.0
     zone_front_band: float = 0.66
     zone_back_band: float = 0.33
+    # k-anonymity floor: zones with fewer than this many tracked faces are
+    # suppressed (no per-few-people engagement). 5 in production (privacy); can
+    # be lowered for a small controlled test so engagement is visible.
+    engagement_k_min: int = 5
 
     @property
     def supabase_enabled(self) -> bool:

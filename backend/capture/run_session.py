@@ -152,6 +152,7 @@ def build_observers(
         window_s=settings.engagement_window_s,
         front_band=settings.zone_front_band,
         back_band=settings.zone_back_band,
+        k_min=settings.engagement_k_min,
     )
 
     def frame_observer(frame: np.ndarray, rel_ts: float) -> None:

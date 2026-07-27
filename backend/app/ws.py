@@ -59,6 +59,31 @@ def _even_zone_split(roster_size: int) -> dict[str, int]:
     return {zone: q + (1 if i < r else 0) for i, zone in enumerate(ZONES)}
 
 
+def _load_student_id_map() -> dict[str, str]:
+    """reg_no -> students.id (UUID) from Supabase, so presence writes use the
+    real FK. Empty when Supabase isn't configured (the offline loop persists
+    nothing anyway)."""
+    if not settings.supabase_enabled:
+        return {}
+    try:
+        import httpx
+
+        r = httpx.get(
+            settings.supabase_url.rstrip("/") + "/rest/v1/students",
+            params={"select": "id,reg_no"},
+            headers={
+                "apikey": settings.supabase_secret_key,
+                "Authorization": f"Bearer {settings.supabase_secret_key}",
+            },
+            timeout=10.0,
+        )
+        r.raise_for_status()
+        return {row["reg_no"]: row["id"] for row in r.json()}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("student id map load failed: %s", exc)
+        return {}
+
+
 def _decode_jpg(b64: str) -> np.ndarray | None:
     try:
         raw = base64.b64decode(b64, validate=True)
@@ -94,7 +119,10 @@ async def capture(ws: WebSocket) -> None:
             return
         writer = build_writer()
         recorder = SessionRecorder(
-            writer=writer, session_id=session_id, session_start=session_start
+            writer=writer,
+            session_id=session_id,
+            session_start=session_start,
+            student_id_map=_load_student_id_map(),
         )
         observers, aggregator = build_observers(
             mode=mode,
