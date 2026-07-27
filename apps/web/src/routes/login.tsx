@@ -1,77 +1,78 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import { Command, Fingerprint } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
+import { Command, Fingerprint, GraduationCap, Users } from "lucide-react";
 import { toast } from "sonner";
 import { GlowBorder, ShimmerButton, ClickSpark, ThemeToggle, Lightfall } from "@/components/fx";
 import { useTheme } from "@/lib/theme";
+import { ROLE_HOME, signInStaff, signInStudent } from "@/lib/auth";
+import type { Role } from "@/lib/types";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({
-    meta: [{ title: "Sign in · SensePro+" }],
-  }),
+  head: () => ({ meta: [{ title: "Sign in · SensePro+" }] }),
   component: LoginPage,
 });
+
+const QUICK: { role: Role; label: string; email: string; pwd: string }[] = [
+  { role: "teacher", label: "Teacher", email: "teacher@sensepro.app", pwd: "Teach@2026" },
+  { role: "management", label: "Management", email: "manage@sensepro.app", pwd: "Manage@2026" },
+  { role: "admin", label: "Admin", email: "admin@sensepro.app", pwd: "Admin@2026" },
+];
 
 function LoginPage() {
   const nav = useNavigate();
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const [tab, setTab] = useState<"staff" | "student">("staff");
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
   const [name, setName] = useState("");
+  const [regNo, setRegNo] = useState("");
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function routeByRole(role: Role | undefined) {
+    nav({ to: role ? ROLE_HOME[role] : "/me" });
+  }
+
+  async function doStaff(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!email || !pwd) return;
     setBusy(true);
+    const { data, error } = await signInStaff(email.trim(), pwd);
+    setBusy(false);
+    if (error) return toast.error(error.message || "Sign-in failed");
+    routeByRole(data.user?.app_metadata?.app_role as Role | undefined);
+  }
 
-    try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password: pwd,
-          options: { data: { full_name: name } },
-        });
-        if (error) throw error;
-        toast.success("Account created. Check your email to confirm.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password: pwd });
-        if (error) throw error;
-        nav({ to: "/teacher" });
-        return;
-      }
-    } catch (err: any) {
-      if (err?.message?.includes("placeholder") || err?.message?.includes("fetch")) {
-        toast.info("Demo mode — Supabase not configured. Redirecting to console.");
-        nav({ to: "/teacher" });
-        return;
-      }
-      toast.error(err?.message ?? "Authentication failed");
-    } finally {
-      setBusy(false);
-    }
+  async function quick(q: (typeof QUICK)[number]) {
+    setBusy(true);
+    const { data, error } = await signInStaff(q.email, q.pwd);
+    setBusy(false);
+    if (error) return toast.error(error.message || "Sign-in failed");
+    routeByRole(data.user?.app_metadata?.app_role as Role | undefined);
+  }
+
+  async function doStudent(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!regNo.trim()) return toast.error("Enter your register number");
+    setBusy(true);
+    const { error } = await signInStudent(regNo);
+    setBusy(false);
+    if (error) return toast.error("Check your name and register number");
+    nav({ to: "/me" });
   }
 
   return (
     <ClickSpark sparkColor="#F59E0B" sparkCount={8} sparkRadius={18}>
       <div className="app-bg grain-overlay relative flex min-h-screen items-center justify-center overflow-hidden px-6">
-        {/* Theme Toggle */}
         <div className="absolute top-6 right-6 z-50">
           <ThemeToggle className="bg-transparent border-transparent hover:bg-[color:var(--surface-2)] hover:border-[color:var(--line)]" />
         </div>
 
-        {/* Ambient */}
         <div className="absolute inset-0 -z-30">
           <Lightfall
             dpr={1}
-            colors={isDark
-              ? ["#F59E0B", "#D97706", "#10B981"]
-              : ["#B45309", "#92400E", "#059669"]
-            }
+            colors={isDark ? ["#F59E0B", "#D97706", "#10B981"] : ["#B45309", "#92400E", "#059669"]}
             backgroundColor={isDark ? "#07070A" : "#F8F6F1"}
             speed={0.3}
             streakCount={2}
@@ -90,27 +91,13 @@ function LoginPage() {
           />
         </div>
 
-        {/* Decorative grid lines */}
-        <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
-          <div className="absolute top-1/4 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[color:var(--line)] to-transparent" />
-          <div className="absolute top-3/4 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[color:var(--line)] to-transparent" />
-          <div className="absolute left-1/4 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-[color:var(--line)] to-transparent" />
-          <div className="absolute left-3/4 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-[color:var(--line)] to-transparent" />
-        </div>
-
-        {/* Login card */}
         <motion.div
           initial={{ opacity: 0, y: 24, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="relative z-10 w-full max-w-md"
         >
-          <GlowBorder
-            className="w-full"
-            color="var(--primary, #F59E0B)"
-            duration={5}
-            radius="20px"
-          >
+          <GlowBorder className="w-full" color="var(--primary, #F59E0B)" duration={5} radius="20px">
             <div className="glass-frosted glass-hover rounded-[20px] p-8">
               {/* Logo */}
               <div className="flex items-center gap-3">
@@ -130,124 +117,115 @@ function LoginPage() {
                 </div>
               </div>
 
-              {/* Title */}
+              {/* Tabs */}
+              <div className="mt-6 grid grid-cols-2 gap-2 rounded-lg border border-[color:var(--line)] bg-[color:var(--surface-2)] p-1">
+                {(["staff", "student"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTab(t)}
+                    className={
+                      "sp-focus flex h-10 items-center justify-center gap-2 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors " +
+                      (tab === t
+                        ? "bg-[color:var(--primary)] text-white"
+                        : "text-[color:var(--muted)] hover:text-[color:var(--ink)]")
+                    }
+                  >
+                    {t === "staff" ? <Users className="h-4 w-4" /> : <GraduationCap className="h-4 w-4" />}
+                    {t}
+                  </button>
+                ))}
+              </div>
+
               <AnimatePresence mode="wait">
-                <motion.div
-                  key={mode}
-                  initial={{ opacity: 0, x: mode === "signin" ? -16 : 16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: mode === "signin" ? 16 : -16 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  <h1 className="mt-8 font-display text-3xl font-extrabold tracking-tight text-[color:var(--ink)]">
-                    {mode === "signin" ? "Sign in" : "Create account"}
-                  </h1>
-                  <p className="mt-1 text-sm text-[color:var(--muted)]">
-                    {mode === "signin"
-                      ? "Faculty & staff console. Student devices sign in via campus SSO."
-                      : "Register with your campus email. Your admin will assign roles after verification."}
-                  </p>
-                </motion.div>
+                {tab === "staff" ? (
+                  <motion.form
+                    key="staff"
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -12 }}
+                    transition={{ duration: 0.2 }}
+                    onSubmit={doStaff}
+                    className="mt-5 space-y-4"
+                  >
+                    <p className="text-sm text-[color:var(--muted)]">
+                      Faculty &amp; staff console — sign in with your campus email.
+                    </p>
+                    <Field label="Email">
+                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="teacher@sensepro.app" className="lf-input" autoComplete="email" />
+                    </Field>
+                    <Field label="Password">
+                      <input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder="••••••••" className="lf-input" autoComplete="current-password" />
+                    </Field>
+                    <ShimmerButton type="submit" disabled={busy} className="h-12 w-full text-sm">
+                      {busy ? "Verifying…" : "Enter console"}
+                    </ShimmerButton>
+
+                    <div className="pt-1">
+                      <div className="mb-2 font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+                        Quick demo login
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {QUICK.map((q) => (
+                          <button
+                            key={q.role}
+                            type="button"
+                            disabled={busy}
+                            onClick={() => quick(q)}
+                            className="sp-focus h-10 rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)] text-[11px] font-medium text-[color:var(--ink)] transition-colors hover:border-[color:var(--primary)]"
+                          >
+                            {q.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.form>
+                ) : (
+                  <motion.form
+                    key="student"
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 12 }}
+                    transition={{ duration: 0.2 }}
+                    onSubmit={doStudent}
+                    className="mt-5 space-y-4"
+                  >
+                    <p className="text-sm text-[color:var(--muted)]">
+                      Students: sign in with your name and register number to see your attendance.
+                    </p>
+                    <Field label="Your name">
+                      <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Namratha R" className="lf-input" autoComplete="name" />
+                    </Field>
+                    <Field label="Register number">
+                      <input type="text" value={regNo} onChange={(e) => setRegNo(e.target.value)} placeholder="e.g. 2547234" className="lf-input" autoComplete="off" />
+                    </Field>
+                    <ShimmerButton type="submit" disabled={busy} className="h-12 w-full text-sm">
+                      {busy ? "Verifying…" : "View my attendance"}
+                    </ShimmerButton>
+                  </motion.form>
+                )}
               </AnimatePresence>
 
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-                <AnimatePresence>
-                  {mode === "signup" && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Field label="Full name">
-                        <input
-                          type="text"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          placeholder="Dr. R. Rao"
-                          className="input-field"
-                          autoComplete="name"
-                        />
-                      </Field>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <Field label="Email">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@campus"
-                    className="input-field"
-                    autoComplete="email"
-                  />
-                </Field>
-
-                <Field label="Password">
-                  <input
-                    type="password"
-                    value={pwd}
-                    onChange={(e) => setPwd(e.target.value)}
-                    placeholder="••••••••"
-                    className="input-field"
-                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                  />
-                </Field>
-
-                <ShimmerButton type="submit" disabled={busy} className="h-12 w-full text-sm">
-                  {busy ? "Verifying…" : mode === "signin" ? "Enter console" : "Create account"}
-                </ShimmerButton>
-
-                <button
-                  type="button"
-                  onClick={() => nav({ to: "/teacher" })}
-                  className="h-11 w-full rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)] text-sm font-medium text-[color:var(--ink)] transition-colors hover:bg-[color:var(--surface)]"
-                >
-                  Continue in demo mode →
-                </button>
-
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-                    className="font-mono-nums text-[10px] uppercase tracking-[0.16em] text-[color:var(--primary)] transition-colors hover:text-[color:var(--ink)]"
-                  >
-                    {mode === "signin" ? "Create an account" : "Already have an account? Sign in"}
-                  </button>
-                  <div className="flex items-center gap-1 text-[color:var(--muted)]">
-                    <Fingerprint className="h-3 w-3" />
-                    <span className="font-mono-nums text-[10px] uppercase tracking-[0.18em]">
-                      DPDP
-                    </span>
-                  </div>
+              <div className="mt-5 flex items-center justify-end border-t border-[color:var(--line)] pt-4">
+                <div className="flex items-center gap-1 text-[color:var(--muted)]">
+                  <Fingerprint className="h-3 w-3" />
+                  <span className="font-mono-nums text-[10px] uppercase tracking-[0.18em]">DPDP · RLS</span>
                 </div>
-              </form>
+              </div>
             </div>
           </GlowBorder>
         </motion.div>
 
         <style>{`
-          .input-field {
-            width: 100%;
-            height: 48px;
-            padding: 0 14px;
-            border-radius: 10px;
+          .lf-input {
+            width: 100%; height: 48px; padding: 0 14px; border-radius: 10px;
             background: color-mix(in oklab, var(--surface) 80%, transparent);
-            border: 1px solid var(--line);
-            color: var(--ink);
-            font-family: var(--font-mono);
-            font-size: 13px;
-            outline: none;
+            border: 1px solid var(--line); color: var(--ink);
+            font-family: var(--font-mono); font-size: 13px; outline: none;
             transition: border-color .2s ease, box-shadow .2s ease;
           }
-          .input-field::placeholder { color: var(--muted); }
-          .input-field:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--primary-glow),
-                        0 0 20px var(--primary-glow);
-          }
+          .lf-input::placeholder { color: var(--muted); }
+          .lf-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow), 0 0 20px var(--primary-glow); }
         `}</style>
       </div>
     </ClickSpark>

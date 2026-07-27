@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { ShieldAlert, Check, X, ChevronRight, AlertTriangle } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { fetchProctorQueueLive, reviewFlagLive } from "@/lib/data/live";
 
 export const Route = createFileRoute("/_shell/proctor")({
   head: () => ({
@@ -23,16 +24,6 @@ interface Flag {
   status: "awaiting_review" | "dismissed" | "upheld";
 }
 
-function mockFlags(): Flag[] {
-  return [
-    { id: "PF-001", type: "phone", student: "Aarav K.", ts: "10:14:32", confidence: 0.87, session: "Data Structures", status: "awaiting_review" },
-    { id: "PF-002", type: "extra_person", student: "Meera D.", ts: "10:18:45", confidence: 0.72, session: "Data Structures", status: "awaiting_review" },
-    { id: "PF-003", type: "head_pose", student: "Rohan S.", ts: "10:21:11", confidence: 0.64, session: "Data Structures", status: "awaiting_review" },
-    { id: "PF-004", type: "phone", student: "Priya N.", ts: "10:24:58", confidence: 0.91, session: "Data Structures", status: "awaiting_review" },
-    { id: "PF-005", type: "head_pose", student: "Ishaan V.", ts: "10:32:05", confidence: 0.55, session: "Data Structures", status: "awaiting_review" },
-  ];
-}
-
 const TYPE_LABELS: Record<string, string> = {
   phone: "Phone detected",
   extra_person: "Extra person",
@@ -40,14 +31,21 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 function ProctorPage() {
-  const [flags, setFlags] = useState<Flag[]>(() => mockFlags());
+  const [flags, setFlags] = useState<Flag[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const pending = useMemo(() => flags.filter((f) => f.status === "awaiting_review"), [flags]);
   const current = flags.find((f) => f.id === selected) ?? pending[0];
 
+  useEffect(() => {
+    fetchProctorQueueLive()
+      .then((rows) => setFlags(rows as Flag[]))
+      .catch(() => {});
+  }, []);
+
   function resolve(id: string, verdict: "dismissed" | "upheld") {
     setFlags((prev) => prev.map((f) => (f.id === id ? { ...f, status: verdict } : f)));
     if (selected === id) setSelected(null);
+    void reviewFlagLive(id, verdict).catch(() => {});
   }
 
   return (

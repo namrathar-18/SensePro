@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, Link2, ShieldCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  mockAudit, mockConsents, mockDevices, mockUsers,
-} from "@/lib/data/mock";
+  fetchAuditLive, fetchConsentsLive, fetchDevicesLive, fetchUsersLive,
+} from "@/lib/data/live";
+import type { AuditEntry, ConsentRecord, DeviceRow, UserRow } from "@/lib/data/types";
 
 export const Route = createFileRoute("/_shell/admin")({
   head: () => ({
@@ -18,13 +19,28 @@ type Tab = (typeof TABS)[number];
 
 function AdminPage() {
   const [tab, setTab] = useState<Tab>("Devices");
-  const devices = useMemo(() => mockDevices(), []);
-  const users = useMemo(() => mockUsers(), []);
-  const consents = useMemo(() => mockConsents(), []);
-  const audit = useMemo(() => mockAudit(), []);
-  const [deletionQ, setDeletionQ] = useState(
-    consents.slice(0, 3).map((c) => ({ ...c, requested_at: new Date(Date.now() - 3600_000).toISOString() })),
-  );
+  const [devices, setDevices] = useState<DeviceRow[]>([]);
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [consents, setConsents] = useState<ConsentRecord[]>([]);
+  const [audit, setAudit] = useState<AuditEntry[]>([]);
+  const [deletionQ, setDeletionQ] = useState<(ConsentRecord & { requested_at: string })[]>([]);
+
+  useEffect(() => {
+    fetchDevicesLive().then(setDevices).catch(() => {});
+    fetchUsersLive().then(setUsers).catch(() => {});
+    fetchAuditLive().then(setAudit).catch(() => {});
+    fetchConsentsLive()
+      .then((cs) => {
+        setConsents(cs);
+        setDeletionQ(
+          cs.slice(0, 3).map((c) => ({
+            ...c,
+            requested_at: new Date(Date.now() - 3600_000).toISOString(),
+          })),
+        );
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="space-y-6">

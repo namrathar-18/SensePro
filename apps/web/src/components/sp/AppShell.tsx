@@ -1,4 +1,4 @@
-import { Link, useRouterState, Outlet } from "@tanstack/react-router";
+import { Link, useRouterState, Outlet, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Radio, Users, BarChart3, Shield, User, Command, Fingerprint,
@@ -8,6 +8,7 @@ import { ConnectionBadge } from "./ConnectionBadge";
 import { cn } from "@/lib/utils";
 import { useState, type ReactNode } from "react";
 import { MagneticHover, ParticleField, ThemeToggle } from "@/components/fx";
+import { useAuth, signOut, ROLE_LABEL } from "@/lib/auth";
 
 export type AppRole = "teacher" | "management" | "admin" | "proctor" | "student";
 
@@ -34,6 +35,22 @@ const NAV: NavItem[] = [
 export function AppShell({ children, title }: { children: ReactNode; title?: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useAuth();
+  const nav = useNavigate();
+  const items = NAV.filter((n) => !n.roles || (user ? n.roles.includes(user.role as AppRole) : false));
+
+  const initials = (user?.full_name ?? "User")
+    .split(/\s+/)
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  async function handleSignOut() {
+    await signOut();
+    nav({ to: "/login" });
+  }
 
   const navContent = (
     <>
@@ -58,7 +75,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
       {/* Nav */}
       <nav className="flex flex-col gap-0.5 px-3 pt-4">
         <div className="sp-eyebrow px-3 pb-2 text-[9.5px]">Workspace</div>
-        {NAV.map((n) => {
+        {items.map((n) => {
           const active = pathname.startsWith(n.to);
           const Icon = n.icon;
           return (
@@ -97,22 +114,25 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
       <div className="mt-auto p-4">
         <div className="flex items-center gap-3 rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)]/70 p-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[color:var(--line)] bg-[color:var(--surface)] font-mono-nums text-[11px] font-semibold text-[color:var(--ink)]">
-            NR
+            {initials}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[13px] leading-tight text-[color:var(--ink)]">Namratha R</div>
+            <div className="truncate text-[13px] leading-tight text-[color:var(--ink)]">
+              {user?.full_name ?? "Not signed in"}
+            </div>
             <div className="truncate font-mono-nums text-[10px] leading-tight text-[color:var(--muted)]">
-              namrp.18@gmail.com
+              {user ? ROLE_LABEL[user.role] : ""}
+              {user?.reg_no ? ` · ${user.reg_no}` : ""}
             </div>
           </div>
           <ThemeToggle className="shrink-0 bg-[color:var(--surface)] hover:bg-[color:var(--surface-2)] border-transparent hover:border-[color:var(--line)]" />
-          <Link
-            to="/login"
+          <button
+            onClick={handleSignOut}
             className="sp-focus flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--muted)] transition-colors hover:bg-[color:var(--surface)] hover:text-[color:var(--ink)]"
             aria-label="Sign out"
           >
             <LogOut className="h-4 w-4" />
-          </Link>
+          </button>
         </div>
       </div>
     </>

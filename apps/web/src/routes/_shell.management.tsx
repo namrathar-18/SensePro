@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
 } from "recharts";
-import { mockSessions, mockVneiTrend, mockZones } from "@/lib/data/mock";
+import { mockSessions, mockVneiTrend } from "@/lib/data/mock";
+import { fetchZonesLive } from "@/lib/data/live";
 import { ZoneStrip } from "@/components/charts/ZoneStrip";
 import { cn } from "@/lib/utils";
 import type { ZoneAggregate } from "@/lib/data/types";
@@ -42,7 +43,10 @@ function ManagementPage() {
   }, [refresh]);
 
   const trend = useMemo(() => mockVneiTrend(), []);
-  const zones = useMemo(() => mockZones(), []);
+  const [zones, setZones] = useState<ZoneAggregate[]>([]);
+  useEffect(() => {
+    fetchZonesLive().then(setZones).catch(() => {});
+  }, []);
   const biasZones: ZoneAggregate[] = useMemo(() => zones.map((z) => ({
     ...z,
     naive_mean: z.naive_mean ?? z.vnei * (0.9 + Math.random() * 0.2),

@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { StateChip } from "@/components/sp/StateChip";
-import { mockMyAttendance } from "@/lib/data/mock";
+import { fetchMyAttendanceLive } from "@/lib/data/live";
+import { useAuth } from "@/lib/auth";
+import type { AttendanceRecord } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_shell/me")({
@@ -14,10 +16,15 @@ export const Route = createFileRoute("/_shell/me")({
 });
 
 function MePage() {
-  const history = useMemo(() => mockMyAttendance(), []);
+  const { user } = useAuth();
+  const [history, setHistory] = useState<AttendanceRecord[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [deleted, setDeleted] = useState(false);
+
+  useEffect(() => {
+    fetchMyAttendanceLive().then(setHistory).catch(() => {});
+  }, []);
 
   const strip = history.slice(0, 21).reverse();
 
@@ -32,7 +39,12 @@ function MePage() {
                 Attendance · last 21 sessions
               </div>
               <div className="mt-0.5 font-display text-xl font-extrabold tracking-tight text-[color:var(--ink)]">
-                Your pattern
+                {user?.full_name ?? "Your pattern"}
+                {user?.reg_no ? (
+                  <span className="ml-2 font-mono-nums text-sm font-normal text-[color:var(--muted)]">
+                    {user.reg_no}
+                  </span>
+                ) : null}
               </div>
             </div>
             <Legend />
