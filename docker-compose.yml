@@ -1,0 +1,16 @@
+# Local dev convenience. Supabase itself is cloud-hosted (see .env).
+# This composes the API and a simulated edge agent for integration testing.
+services:
+  api:
+    build: ./services/api
+    env_file: .env
+    ports: ["8000:8000"]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+  edge-sim:
+    build: ./edge
+    env_file: .env
+    environment:
+      - EDGE_SIM=true
+      - EDGE_API_BASE=http://api:8000
+    depends_on: [api]
+    command: python -m sensepro_edge.main --simulate

@@ -1,0 +1,420 @@
+openapi: 3.1.0
+
+info:
+  title: SensePro+ API
+  version: "0.1.0"
+  description: |
+    FROZEN for Phase 1 — changes require an ADR.
+
+    Single source of truth the frontend consumes. Two surfaces:
+      1. Implemented today: GET /health and the /ws/capture WebSocket channel.
+         The WebSocket message schemas below mirror backend/app/ws.py and
+         backend/vision/pipeline.py exactly — do not let them drift.
+      2. Week-2 REST stubs (tagged `x-phase: 2`): schemas are defined now so the
+         UI can mock against them, but the routes are NOT implemented yet. The
+         backend is database-centric — dashboards read directly from Postgres via
+         Supabase RLS + Realtime (see ADR 0004); FastAPI's service role is used
+         only for the vision write-path. These REST routes are the narrow set the
+         UI genuinely needs beyond direct DB reads.
+
+    Enum and field names follow the database schema (supabase/migrations/0001_init.sql)
+    as authoritative: zones are `front|mid|back` (aggregates add `class`), session
+    mode is `lecture|exam|workshop`, students carry `reg_no`/`full_name`.
+
+servers:
+  - url: http://localhost:8000
+    description: Local inference backend (dev)
+
+tags:
+  - name: health
+  - name: capture
+    description: Live browser-capture WebSocket channel.
+  - name: sessions
+    description: REST stubs — implemented in Week 2.
+  - name: students
+    description: REST stubs — implemented in Week 2.
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Liveness probe.
+      responses:
+        "200":
+          description: Service is up.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /ws/capture:
+    get:
+      tags: [capture]
+      operationId: wsCapture
+      summary: WebSocket capture channel (not a plain GET).
+      description: |
+        **This is a WebSocket endpoint**, documented as a GET path because
+        OpenAPI 3.1 has no native WebSocket type. Open with
+        `new WebSocket("ws://<host>/ws/capture")`. All frames are JSON text.
+        The server creates one session pipeline per connection (= per class
+        session). Frames are decoded, run through the vision pipeline, and
+        discarded in memory — never persisted.
+
+        Client → server messages:
+          - `FrameMessage`  {type:"frame", ts, jpg_b64}   (send at 1/fps)
+          - `EndMessage`    {type:"end", ts}
+
+        Server → client messages:
+          - `ResultMessage`        {type:"result", ts, faces[], transitions[], present[]}
+          - `ErrorMessage`         {type:"error", detail}   (bad frame / unknown type; connection stays open)
+          - `SessionEndedMessage`  {type:"session_ended", ts}  (reply to EndMessage; server then closes)
+
+        `Face.box` is `[x1, y1, x2, y2]` in the pixel space of the SENT
+        (downscaled) frame; the client scales it to the displayed video.
+      responses:
+        "101":
+          description: Switching Protocols — WebSocket handshake accepted.
+
+  /v1/sessions:
+    post:
+      tags: [sessions]
+      operationId: createSession
+      summary: Start a class session. (Week 2 — not implemented yet.)
+      x-phase: 2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionCreate"
+      responses:
+        "201":
+          description: Session created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+
+  /v1/sessions/{id}/end:
+    post:
+      tags: [sessions]
+      operationId: endSession
+      summary: End a class session. (Week 2 — not implemented yet.)
+      x-phase: 2
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Session ended.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+
+  /v1/sessions/{id}:
+    get:
+      tags: [sessions]
+      operationId: getSession
+      summary: Session plus its live roster snapshot. (Week 2 — not implemented yet.)
+      x-phase: 2
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Session with roster.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionDetail"
+
+  /v1/students:
+    get:
+      tags: [students]
+      operationId: listStudents
+      summary: Roster for a class section. (Week 2 — not implemented yet.)
+      x-phase: 2
+      parameters:
+        - name: class_section
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Student roster.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Student"
+
+  /v1/students/{id}/attendance:
+    get:
+      tags: [students]
+      operationId: getStudentAttendance
+      summary: A student's presence intervals. (Week 2 — not implemented yet.)
+      x-phase: 2
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Presence intervals for the student.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PresenceInterval"
+
+components:
+  parameters:
+    SessionId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    # ---------------- health ----------------
+    Health:
+      type: object
+      required: [status, service, vision_backend]
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: sensepro-backend
+        vision_backend:
+          type: string
+          description: Active vision backend (VISION_BACKEND env).
+          enum: [stub, insightface]
+
+    # ---------------- shared enums ----------------
+    PresenceState:
+      type: string
+      description: Presence state machine output (backend/presence/fsm.py).
+      enum: [PRESENT, UNVERIFIED, ABSENT]
+
+    Zone:
+      type: string
+      description: Seat zone (students/presence use front|mid|back).
+      enum: [front, mid, back]
+
+    SessionMode:
+      type: string
+      enum: [lecture, exam, workshop]
+
+    # ---------------- WebSocket: client -> server ----------------
+    FrameMessage:
+      type: object
+      required: [type, ts, jpg_b64]
+      properties:
+        type:
+          const: frame
+        ts:
+          type: number
+          description: Seconds since session start.
+        jpg_b64:
+          type: string
+          description: Base64-encoded JPEG of the downscaled frame (no data-URI prefix).
+
+    EndMessage:
+      type: object
+      required: [type, ts]
+      properties:
+        type:
+          const: end
+        ts:
+          type: number
+
+    ClientMessage:
+      oneOf:
+        - $ref: "#/components/schemas/FrameMessage"
+        - $ref: "#/components/schemas/EndMessage"
+      discriminator:
+        propertyName: type
+
+    # ---------------- WebSocket: server -> client ----------------
+    Face:
+      type: object
+      required: [track_id, box, student_id, score]
+      properties:
+        track_id:
+          type: integer
+          description: Stable tracker id for this face across frames.
+        box:
+          type: array
+          description: "[x1, y1, x2, y2] in SENT-frame pixels."
+          items:
+            type: integer
+          minItems: 4
+          maxItems: 4
+        student_id:
+          type: [string, "null"]
+          description: Matched student id, or null when unrecognised.
+        score:
+          type: number
+          description: Cosine match score (0 when unmatched), rounded to 3 dp.
+
+    Transition:
+      type: object
+      required: [student_id, state]
+      properties:
+        student_id:
+          type: string
+        state:
+          $ref: "#/components/schemas/PresenceState"
+
+    ResultMessage:
+      type: object
+      required: [type, ts, faces, transitions, present]
+      properties:
+        type:
+          const: result
+        ts:
+          type: number
+        faces:
+          type: array
+          items:
+            $ref: "#/components/schemas/Face"
+        transitions:
+          type: array
+          description: Presence changes emitted on this re-identification pass (may be empty).
+          items:
+            $ref: "#/components/schemas/Transition"
+        present:
+          type: array
+          description: Sorted student ids currently in the PRESENT state.
+          items:
+            type: string
+
+    ErrorMessage:
+      type: object
+      required: [type, detail]
+      properties:
+        type:
+          const: error
+        detail:
+          type: string
+          description: e.g. "bad frame", "unknown message type". Connection stays open.
+
+    SessionEndedMessage:
+      type: object
+      required: [type, ts]
+      properties:
+        type:
+          const: session_ended
+        ts:
+          type: number
+
+    ServerMessage:
+      oneOf:
+        - $ref: "#/components/schemas/ResultMessage"
+        - $ref: "#/components/schemas/ErrorMessage"
+        - $ref: "#/components/schemas/SessionEndedMessage"
+      discriminator:
+        propertyName: type
+
+    # ---------------- REST resources (Week 2) ----------------
+    Student:
+      type: object
+      required: [id, reg_no, full_name, class_section]
+      properties:
+        id:
+          type: string
+          format: uuid
+        reg_no:
+          type: string
+        full_name:
+          type: string
+        class_section:
+          type: string
+        seat_zone:
+          $ref: "#/components/schemas/Zone"
+
+    SessionCreate:
+      type: object
+      required: [class_section, mode]
+      properties:
+        class_section:
+          type: string
+        subject:
+          type: [string, "null"]
+        mode:
+          $ref: "#/components/schemas/SessionMode"
+
+    Session:
+      type: object
+      required: [id, class_section, mode, starts_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        class_section:
+          type: string
+        subject:
+          type: [string, "null"]
+        mode:
+          $ref: "#/components/schemas/SessionMode"
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: [string, "null"]
+          format: date-time
+
+    PresenceInterval:
+      type: object
+      required: [session_id, student_id, state, started_at]
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        student_id:
+          type: string
+          format: uuid
+        state:
+          $ref: "#/components/schemas/PresenceState"
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: [string, "null"]
+          format: date-time
+
+    RosterEntry:
+      type: object
+      description: Live per-student snapshot for a session's roster view.
+      required: [student_id, full_name, state]
+      properties:
+        student_id:
+          type: string
+        full_name:
+          type: string
+        state:
+          $ref: "#/components/schemas/PresenceState"
+        present_seconds:
+          type: number
+          description: Accumulated PRESENT duration this session.
+
+    SessionDetail:
+      type: object
+      required: [session, roster]
+      properties:
+        session:
+          $ref: "#/components/schemas/Session"
+        roster:
+          type: array
+          items:
+            $ref: "#/components/schemas/RosterEntry"

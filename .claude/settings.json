@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "allow": ["Bash(make:*)", "Bash(pytest:*)", "Bash(ruff:*)"],
+    "deny": ["Read(.env)"]
+  }
+}

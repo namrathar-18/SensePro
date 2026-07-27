@@ -1,0 +1,28 @@
+[project]
+name = "sensepro-backend"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.29",
+  "pydantic-settings>=2.2",
+  "numpy>=1.26",
+  "opencv-python-headless>=4.9",
+]
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27", "ruff==0.16.0"]
+# Production vision backend (installed on the dev/inference machine):
+insightface = ["insightface>=0.7.3", "onnxruntime>=1.17"]
+# Supabase write-path (presence persistence). httpx-only PostgREST client; no
+# reads. Install on the inference host: pip install -e '.[supabase]'
+supabase = ["httpx>=0.27"]
+# Exam-mode proctor detector (pretrained YOLOv8n, COCO). Inference host only;
+# dev/CI run the deterministic stub.
+proctor = ["ultralytics>=8.2"]
+[project.scripts]
+sensepro-enroll = "enroll.cli:main"
+sensepro-enroll-class = "enroll.enroll_class:main"
+[tool.setuptools.packages.find]
+include = ["app*", "vision*", "presence*", "enroll*", "capture*", "proctor*", "engagement*", "eval*"]
+[tool.ruff]
+line-length = 100
