@@ -14,7 +14,9 @@ import {
 import type { ActiveSession, IntervalRow } from "@/lib/data/roster";
 import type { AttendanceState, RosterEntry } from "@/lib/data/types";
 import { CLASS_ROSTER } from "@/lib/data/class-roster";
+import { exportSessionPdf } from "@/lib/data/report";
 import { ProctorReviewPanel } from "@/components/ProctorReviewPanel";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 /** Real 4MCA-B class with a deterministic present/absent spread, shown when
@@ -33,6 +35,7 @@ function demoRoster(): RosterEntry[] {
         state === "PRESENT"
           ? new Date(Date.now() - Math.floor(r * 180_000)).toISOString()
           : null,
+      present_seconds: state === "PRESENT" ? Math.floor(1200 + r * 1800) : 0,
     } as unknown as RosterEntry;
   });
 }
@@ -233,7 +236,15 @@ function TeacherPage() {
               <button className="sp-focus flex h-12 items-center gap-2 rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)] px-4 text-xs text-[color:var(--muted)] transition-colors hover:text-[color:var(--ink)]">
                 <Filter className="h-3.5 w-3.5" /> Advanced
               </button>
-              <button className="sp-focus flex h-12 items-center gap-2 rounded-md bg-[color:var(--primary)] px-4 text-xs font-semibold text-white transition-colors hover:bg-[color:var(--primary-deep)]">
+              <button
+                onClick={() =>
+                  exportSessionPdf({
+                    section: session?.class_section ?? "4MCA-B",
+                    subject: session?.subject ?? "Live session",
+                    roster: roster as never,
+                  }).catch(() => toast.error("Could not generate the PDF"))
+                }
+                className="sp-focus flex h-12 items-center gap-2 rounded-md bg-[color:var(--primary)] px-4 text-xs font-semibold text-white transition-colors hover:bg-[color:var(--primary-deep)]">
                 <Download className="h-3.5 w-3.5" /> Export session report (PDF)
               </button>
             </div>

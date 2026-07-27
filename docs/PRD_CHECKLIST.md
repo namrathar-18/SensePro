@@ -72,7 +72,7 @@ Status of every PRD feature. Legend:
 | Feature | Status | Notes |
 |---|---|---|
 | Honest eval harness (accuracy, duration error, proctor FPR on/off) | ✅ | `python -m eval.run` |
-| Session report PDF export | 🟠 | `exportSessionPdf()` helper exists (jsPDF); the teacher button isn't wired to it yet and needs `npm i jspdf jspdf-autotable` |
+| Session report PDF export | ✅ | teacher “Export session report (PDF)” button generates a branded one-page PDF (jsPDF + autotable) |
 
 ## Out of scope for v1 (PRD §4 — future work)
 ⚪ Multi-classroom fleet management · native mobile apps · LMS deep integration ·
