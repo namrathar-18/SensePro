@@ -97,12 +97,12 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
       <div className="mt-auto p-4">
         <div className="flex items-center gap-3 rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)]/70 p-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[color:var(--line)] bg-[color:var(--surface)] font-mono-nums text-[11px] font-semibold text-[color:var(--ink)]">
-            RR
+            NR
           </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[13px] leading-tight text-[color:var(--ink)]">Dr. R. Rao</div>
+            <div className="truncate text-[13px] leading-tight text-[color:var(--ink)]">Namratha R</div>
             <div className="truncate font-mono-nums text-[10px] leading-tight text-[color:var(--muted)]">
-              t.rao@campus
+              namrp.18@gmail.com
             </div>
           </div>
           <ThemeToggle className="shrink-0 bg-[color:var(--surface)] hover:bg-[color:var(--surface-2)] border-transparent hover:border-[color:var(--line)]" />
