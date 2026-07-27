@@ -20,7 +20,7 @@ const MODES: { id: Mode; label: string; icon: typeof Camera; hint: string }[] = 
 ];
 
 function apiBase() {
-  const ws = (import.meta.env.VITE_WS_URL as string) || "ws://localhost:8000/ws/capture";
+  const ws = (import.meta.env.VITE_WS_URL as string) || "ws://127.0.0.1:8000/ws/capture";
   return ws.replace(/^ws/, "http").replace(/\/ws\/capture$/, "");
 }
 

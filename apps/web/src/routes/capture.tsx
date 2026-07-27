@@ -905,7 +905,9 @@ function NumberRow({
 }
 
 function wsBase() {
-  return (import.meta.env.VITE_WS_URL as string) || "ws://localhost:8000/ws/capture";
+  // 127.0.0.1, not localhost: Windows resolves localhost to IPv6 (::1) but
+  // uvicorn listens on IPv4, which silently breaks the capture WebSocket.
+  return (import.meta.env.VITE_WS_URL as string) || "ws://127.0.0.1:8000/ws/capture";
 }
 function apiBase() {
   return wsBase().replace(/^ws/, "http").replace(/\/ws\/capture$/, "");
