@@ -16,14 +16,23 @@ from vision.tracker import IoUTracker
 from vision.types import Track
 
 
+# The InsightFace model pack (~300 MB) is loaded ONCE and reused across every
+# session/connection. Reloading it per WebSocket froze the event loop for
+# ~5-10s each time, which tripped the WS keepalive and thrashed reconnects.
+_INSIGHTFACE_SINGLETON = None
+
+
 def build_backend():
-    """Factory selected by VISION_BACKEND (stub | insightface)."""
+    """Factory selected by VISION_BACKEND (stub | insightface). The insightface
+    backend is a process-wide singleton so the model loads only once."""
     backend = os.getenv("VISION_BACKEND", "stub").lower()
     if backend == "insightface":
-        from vision.insightface_backend import InsightFaceBackend
+        global _INSIGHTFACE_SINGLETON
+        if _INSIGHTFACE_SINGLETON is None:
+            from vision.insightface_backend import InsightFaceBackend
 
-        b = InsightFaceBackend()
-        return b, b  # detector, embedder are the same object
+            _INSIGHTFACE_SINGLETON = InsightFaceBackend()
+        return _INSIGHTFACE_SINGLETON, _INSIGHTFACE_SINGLETON
     from vision.stub import StubDetector, StubEmbedder
 
     return StubDetector(), StubEmbedder()

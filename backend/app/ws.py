@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -39,6 +40,7 @@ from vision.embedding_store import EmbeddingStore
 from vision.pipeline import SessionPipeline
 
 router = APIRouter()
+logger = logging.getLogger("sensepro.ws")
 
 
 def _load_store() -> EmbeddingStore:
@@ -142,4 +144,7 @@ async def capture(ws: WebSocket) -> None:
             enriched = enricher.enrich(result, frame.shape[0], frame.shape[1])
             await ws.send_json(enriched)
     except WebSocketDisconnect:
+        return
+    except Exception as exc:  # noqa: BLE001 — a dropped/closing socket must not 500-log
+        logger.info("capture socket closed: %s", exc)
         return

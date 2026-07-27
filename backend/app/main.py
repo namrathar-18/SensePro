@@ -7,14 +7,34 @@ processed in memory and never persisted (CLAUDE.md privacy invariant).
 
 from __future__ import annotations
 
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.sessions import router as sessions_router
 from app.ws import router as ws_router
 
-app = FastAPI(title="SensePro+ API", version="0.1.0")
+logger = logging.getLogger("sensepro.main")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Warm the vision model ONCE at startup (off the event loop) so the first
+    # WebSocket connection is instant instead of blocking ~5-10s on model load.
+    if settings.vision_backend.lower() == "insightface":
+        logger.info("warming insightface model at startup…")
+        from vision.pipeline import build_backend
+
+        await run_in_threadpool(build_backend)
+        logger.info("insightface model ready")
+    yield
+
+
+app = FastAPI(title="SensePro+ API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in settings.allow_origins.split(",")],
