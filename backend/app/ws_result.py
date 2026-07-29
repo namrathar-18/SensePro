@@ -71,5 +71,6 @@ class WsEnricher:
             "faces": result.get("faces", []),
             "present": present,
             "transitions": transitions,
+            "proctor": result.get("proctor", {"detections": [], "flags": []}),
             "sent_size": {"w": frame_w, "h": frame_h},
         }

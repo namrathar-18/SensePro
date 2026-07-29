@@ -129,4 +129,4 @@ scripts/        gen_roster.py (regenerates the roster artefacts from one source)
 ```
 
 See `docs/PRD_CHECKLIST.md` for feature-by-feature status against the PRD, and
-`docs/SensePro_PRD_v1.md` / `CLAUDE.md` for the full spec and invariants.
+`docs/SensePro_PRD_v1.md` / `ENGINEERING.md` for the full spec and invariants.

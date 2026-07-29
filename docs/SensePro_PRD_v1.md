@@ -66,7 +66,7 @@ A responsive web app captures the classroom camera and streams frames to a FastA
 └───────────────┬───────────────────────▲─────────────────┘
         frames (WebSocket, JPEG)         │ results (names, states, flags)
 ┌───────────────▼───────────────────────┴─────────────────┐
-│ BACKEND — FastAPI + WebSocket (Python 3.11)  [Claude Code]│
+│ BACKEND — FastAPI + WebSocket (Python 3.11)               │
 │   SCRFD detect → ByteTrack track → ArcFace re-ID/track/Ns │
 │   → cosine match vs embedding cache → Presence FSM        │
 │   exam mode: YOLOv8n (phone/person) + gaze-down filter    │
@@ -92,7 +92,7 @@ A responsive web app captures the classroom camera and streams frames to a FastA
 |---|---|---|
 | Frontend | **React + TypeScript + Vite**, Tailwind, shadcn/ui, Recharts | One responsive PWA; `getUserMedia` capture; WebSocket client |
 | Realtime | **WebSocket** (frames↑ results↓) + **Supabase Realtime** (DB→dashboard push) | Socket.IO acceptable if preferred |
-| Backend | **Python 3.11 + FastAPI + WebSocket** | Built with Claude Code; auto OpenAPI docs |
+| Backend | **Python 3.11 + FastAPI + WebSocket** | Auto OpenAPI docs |
 | Vision | **InsightFace** (SCRFD + ArcFace bundled), **ByteTrack**, **Ultralytics YOLOv8n**, OpenCV, NumPy, onnxruntime | All pretrained; see §9 |
 | Engagement signals | Landmark head-pose (solvePnP) + eye-aspect-ratio; **or** MediaPipe FaceLandmarker in-browser | In-browser version offloads server + improves privacy |
 | DB / Auth / Storage | **Supabase** — Postgres + pgvector + Auth/RLS + Realtime + Storage | One vendor; you've shipped it before (UniEasy) |
@@ -103,7 +103,7 @@ Cash budget: ₹3k–10k (backend hosting for a month + optional Supabase Pro fo
 
 ## 8 · Data model (Supabase)
 
-Use the schema already drafted in the project scaffold (`supabase/migrations/0001_init.sql`): `students`, `consent_records`, `embeddings` (vector(512)), `devices` (now = **browser capture clients**, not board hardware), `class_sessions`, `presence_intervals`, `proctor_flags` (review-only), `engagement_zone_aggregates` (**k ≥ 5 enforced in a CHECK constraint — no per-student engagement table exists by design**), and `audit_log` (hash-chained via trigger). RLS policies tighten per role in migration `0002`. Invariants live in `CLAUDE.md`.
+Use the schema already drafted in the project scaffold (`supabase/migrations/0001_init.sql`): `students`, `consent_records`, `embeddings` (vector(512)), `devices` (now = **browser capture clients**, not board hardware), `class_sessions`, `presence_intervals`, `proctor_flags` (review-only), `engagement_zone_aggregates` (**k ≥ 5 enforced in a CHECK constraint — no per-student engagement table exists by design**), and `audit_log` (hash-chained via trigger). RLS policies tighten per role in migration `0002`. Invariants live in `ENGINEERING.md`.
 
 ## 9 · Models & engines — and the "no training" correction
 
@@ -132,7 +132,7 @@ Your video method is correct; the number isn't. **Target 10–20 quality frames 
 5. **Embed & purge** — ArcFace → 512-d per kept frame; store per-pose embeddings + one averaged template in pgvector; **delete the video and all extracted frames immediately**. Only embeddings persist (≤ ~2 MB for a 50-student class). This is your DPDP headline.
 6. **Verify same-session** — student stands in front of the capture camera; must match own embedding ≥ threshold; re-capture failures on the spot. Target: 100% enrolment verification before anyone leaves.
 
-**Logistics:** run a **team enrollment station** (one laptop/phone on a tripod) — not self-recorded videos (chaotic lighting/quality, more rejects, and consent capture is harder). 50 students ≈ one 75–90 min session. Build a tiny enrollment CLI/script (Claude Code, Week 1) that does steps 2–6 in one command per student.
+**Logistics:** run a **team enrollment station** (one laptop/phone on a tripod) — not self-recorded videos (chaotic lighting/quality, more rejects, and consent capture is harder). 50 students ≈ one 75–90 min session. Build a tiny enrollment CLI/script (Week 1) that does steps 2–6 in one command per student.
 
 ## 11 · Privacy, ethics & the red line
 
@@ -176,15 +176,16 @@ You said no "you're backend, you're frontend" split — so ownership is by **ver
 
 **Rules that actually distribute knowledge:** (1) every PR is **reviewed by a different member** than the author; (2) one **pairing block per week** on the hardest piece (rotate who pairs); (3) the lead owns the **integration branch** and merges; (4) standups surface blockers daily; (5) anyone must be able to explain any merged line at viva — if a tool wrote something you can't explain, rewrite it until you can.
 
-## 14 · Tool fleet — who builds what
+## 14 · Team tracks — who builds what
 
-| Tool | Use for | Discipline |
+Work is sliced by **feature, not by layer**, so every contributor writes both frontend and
+backend on their track and reviews across tracks.
+
+| Track | Owns | Discipline |
 |---|---|---|
-| **Claude Code** (your subscription) | Backend: FastAPI, the CV pipeline, Supabase schema/RLS, enrollment CLI, tests. Reads `CLAUDE.md` for invariants. | Plan → confirm → small steps → `make test` |
-| **Figma AI** | Dashboard + kiosk UI design/mockups before coding | Design first, then generate to match |
-| **Lovable / v0 / AntiGravity** | Frontend scaffolds against the frozen API contract | **Backend owns the API contract; UI consumes it** |
-| **Devin** | Crisp, parallel, low-ambiguity tickets (CRUD, PDF export, a parser, test suites) | Write the ticket like a contract |
-| **AntiGravity** | Longer agentic multi-file builds (either side); harnesses | Review every diff |
+| **Track A — Attendance & integration (lead)** | Capture WS path, CV pipeline, presence FSM, Supabase schema/RLS, enrollment CLI, integration branch. Owns `ENGINEERING.md` invariants. | Plan → confirm → small steps → `make test` |
+| **Track B — Proctor & exam mode** | YOLO proctor engine, gaze-down filter, review queue, exam-mode UI | Backend owns the API contract; UI consumes it |
+| **Track C — Engagement & dashboards** | VNEI aggregation, zone analytics, teacher/management dashboards, PDF export | Design first, then build to match |
 
 ## 15 · Git flow, commits, PRs & documentation
 
@@ -197,15 +198,6 @@ You said no "you're backend, you're frontend" split — so ownership is by **ver
 - **PR template** (`.github/pull_request_template.md`): *What changed · Why · How tested · Screenshots/clip · Checklist (tests pass, invariants respected, no secrets).*
 - **Docs that earn marks:** `README` (one-command setup), `/docs/architecture.md`, `/docs/adr/*` (3-line decision records), the PRD in-repo, FastAPI auto OpenAPI, `CHANGELOG.md`.
 
-### Keeping AI tool names out of the repo (your Lovable concern)
-Lovable (and some others) commit **under their own bot identity** when synced directly to GitHub. To keep the history clean and human-authored:
-
-1. **Do not enable Lovable's direct GitHub auto-sync.** Instead, generate in Lovable → **copy/export the code into your local working tree** → commit it yourself. The commit author is then *you*.
-2. **Set each member's git identity** on their machine: `git config user.name "Real Name"`, `git config user.email "you@christuniversity.in"`. All human commits are correctly attributed.
-3. **Never let any bot author a commit.** Agent output is reviewed by a human, then committed by that human. (This is also rule R1 from your working agreement.)
-4. **Keep tool-identifying junk out:** `.gitignore` AI tool config/session files (`.lovable/`, etc.); no "Generated with X" co-author trailers in commit messages; squash-merge so any intermediate bot-flavoured commits collapse into one human commit.
-5. **If a bot commit ever slips in**, fix attribution before it reaches `main` with an interactive rebase / amend on the feature branch (never rewrite `main`).
-
 ## 16 · Risks (1-month specific)
 
 | Risk | Severity | Mitigation |
@@ -214,7 +206,6 @@ Lovable (and some others) commit **under their own bot identity** when synced di
 | Browser→server frame latency/bandwidth | Med | 1–2 fps, downscale before send, JPEG; cap resolution; cache top results |
 | Recognition weak at classroom distance | Med | Quality-gated enrollment; calibrate threshold Week 1; report honest numbers; front-zone demo if needed |
 | Inference server cost/uptime | Med | Free/cheap tier for one room; keep-alive; backup demo video |
-| AI-tool commits pollute history | Med | §15 workflow — human-authored commits only |
 | Everyone-does-everything causes collisions | Med | Frozen API contract end of Week 1; lead owns integration branch; cross-review |
 | Exam-week crunch | Med | Freeze at Week 4 start; scope ladder; backup video so live failure ≠ disaster |
 
@@ -222,7 +213,7 @@ Lovable (and some others) commit **under their own bot identity** when synced di
 1. Create GitHub org + repo (private), branch protection, PR template, CI; everyone sets git identity (§15).
 2. Create the Supabase project; apply `0001_init.sql`; freeze the API contract by end of Week 1.
 3. Assign slices A/B/C; book the Week-4 demo room + recruit 10–15 volunteers; draft the consent form.
-4. Stand up Claude Code on the backend repo (it reads `CLAUDE.md`); build the enrollment CLI first.
+4. Stand up the backend repo (invariants in `ENGINEERING.md`); build the enrollment CLI first.
 5. Get `/capture` → WebSocket → backend → "hello, recognized face" working by Friday. That single loop de-risks the whole month.
 
 ---

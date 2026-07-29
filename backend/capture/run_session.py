@@ -24,6 +24,7 @@ import argparse
 import logging
 import time
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
@@ -44,6 +45,18 @@ from vision.pipeline import SessionPipeline
 logger = logging.getLogger("sensepro.capture")
 
 FrameObserver = Callable[[np.ndarray, float], None]
+
+
+@dataclass
+class ProctorView:
+    """The latest exam-mode detections + flags raised on the current frame,
+    mutated in place each processed frame. The WS path reads this after the
+    observers run so the capture overlay can *show* the phone / extra person —
+    otherwise proctoring is invisible until a teacher opens the review queue.
+    Empty in lecture mode (no object detector runs)."""
+
+    detections: list[ObjectDetection] = field(default_factory=list)
+    new_flags: list[str] = field(default_factory=list)
 
 
 class FrameSource(Protocol):
@@ -126,10 +139,13 @@ def build_observers(
     session_id: str,
     session_start: datetime,
     enrolled_by_zone: dict[str, int],
-) -> tuple[list[FrameObserver], ZoneAggregator]:
+) -> tuple[list[FrameObserver], ZoneAggregator, ProctorView]:
     """Exam mode adds the proctor engine; engagement aggregates in both modes.
     One detector pass per sampled frame serves both consumers — in lecture
-    mode there is no object detector, so phone signals are simply absent."""
+    mode there is no object detector, so phone signals are simply absent.
+
+    Returns a ProctorView too: the caller can read the current frame's phone /
+    person detections (to draw them live) without re-running the detector."""
     engine = None
     if mode == "exam":
         engine = ProctorEngine(
@@ -155,17 +171,23 @@ def build_observers(
         k_min=settings.engagement_k_min,
     )
 
+    view = ProctorView()
+
     def frame_observer(frame: np.ndarray, rel_ts: float) -> None:
         tracks = pipeline.last_tracks
         phone_dets: list[ObjectDetection] = []
         if engine is not None:
             dets = engine.detector.detect(frame)
-            engine.observe(frame, tracks, rel_ts, detections=dets)
+            flags = engine.observe(frame, tracks, rel_ts, detections=dets)
             phone_dets = [d for d in dets if d.label == "cell phone"]
+            # Surface this frame's detections + any flag types raised, so the
+            # capture overlay can render them (see app/ws.py::_process).
+            view.detections = dets
+            view.new_flags = [f.flag_type for f in flags]
         signals = extractor.extract(tracks, phone_dets, frame.shape[:2])
         aggregator.observe([(t, signals[t.track_id]) for t in tracks], frame.shape[0], rel_ts)
 
-    return [frame_observer], aggregator
+    return [frame_observer], aggregator, view
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -197,11 +219,12 @@ def main(argv: list[str] | None = None) -> None:
         store=store,
         reid_interval_s=settings.reid_interval_s,
         miss_threshold=settings.miss_threshold,
+        latch=settings.presence_latch,
     )
     writer = build_writer()
     session_start = datetime.now(UTC)
     recorder = SessionRecorder(writer=writer, session_id=args.session, session_start=session_start)
-    observers, aggregator = build_observers(
+    observers, aggregator, _ = build_observers(
         mode=args.mode,
         pipeline=pipeline,
         writer=writer,

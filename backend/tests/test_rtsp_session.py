@@ -182,7 +182,7 @@ def test_exam_mode_wiring_flags_phone_and_holds_k_floor() -> None:
     pipeline = SessionPipeline(store=_enrolled_store(), reid_interval_s=0.0, miss_threshold=1)
     start = datetime.now(UTC)
     recorder = SessionRecorder(writer=writer, session_id="sess-exam", session_start=start)
-    observers, aggregator = build_observers(
+    observers, aggregator, _ = build_observers(
         mode="exam",
         pipeline=pipeline,
         writer=writer,

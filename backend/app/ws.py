@@ -15,7 +15,7 @@ size of the frame the server actually scored (so the overlay maps boxes back).
 The browser is one capture source; capture/run_session.py is another (RTSP).
 Both drive the SAME SessionPipeline + observers, so exam proctoring and VNEI
 engagement run identically from the webcam and from a camera. Frames are
-processed in memory and never persisted (CLAUDE.md privacy invariant).
+processed in memory and never persisted (core privacy invariant).
 """
 
 from __future__ import annotations
@@ -101,6 +101,7 @@ async def capture(ws: WebSocket) -> None:
         store=store,
         reid_interval_s=settings.reid_interval_s,
         miss_threshold=settings.miss_threshold,
+        latch=settings.presence_latch,
     )
     enricher = WsEnricher(load_roster_names(settings.roster_json))
     mode = ws.query_params.get("mode", "lecture")
@@ -111,10 +112,11 @@ async def capture(ws: WebSocket) -> None:
     recorder: SessionRecorder | None = None
     observers: list = []
     aggregator = None
+    proctor_view = None
     session_start = datetime.now(UTC)
 
     def _attach(session_id: str | None) -> None:
-        nonlocal recorder, observers, aggregator
+        nonlocal recorder, observers, aggregator, proctor_view
         if not session_id or recorder is not None:
             return
         writer = build_writer()
@@ -124,7 +126,7 @@ async def capture(ws: WebSocket) -> None:
             session_start=session_start,
             student_id_map=_load_student_id_map(),
         )
-        observers, aggregator = build_observers(
+        observers, aggregator, proctor_view = build_observers(
             mode=mode,
             pipeline=pipe,
             writer=writer,
@@ -145,6 +147,17 @@ async def capture(ws: WebSocket) -> None:
             recorder.record(transitions, ts)
         for observe in observers:
             observe(frame, ts)
+        # Surface exam-mode proctor detections so the overlay can draw the phone
+        # / extra person live. The observers already ran the detector this frame;
+        # we only read what they found. Empty outside exam mode.
+        if proctor_view is not None:
+            result["proctor"] = {
+                "detections": [
+                    {"label": d.label, "box": list(d.box), "confidence": round(d.confidence, 2)}
+                    for d in proctor_view.detections
+                ],
+                "flags": proctor_view.new_flags,
+            }
         return result
 
     try:

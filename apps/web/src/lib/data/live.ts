@@ -163,6 +163,42 @@ export async function reviewFlagLive(id: string, verdict: "dismissed" | "upheld"
   if (error) throw error;
 }
 
+export interface SessionRow {
+  id: string;
+  subject: string;
+  class_section: string;
+  mode: string;
+  starts_at: string;
+  ends_at: string | null;
+  present: number; // distinct students marked PRESENT
+}
+
+/** Session history from class_sessions, newest first, with a distinct-present
+ * count per session derived from presence_intervals. Staff-visible via RLS. */
+export async function fetchSessionsLive(): Promise<SessionRow[]> {
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .select("id, subject, class_section, mode, starts_at, ends_at, presence_intervals(student_id, state)")
+    .order("starts_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return (data ?? []).map((s: Record<string, unknown>) => {
+    const rows = (s.presence_intervals ?? []) as { student_id: string; state: string }[];
+    const present = new Set(
+      rows.filter((r) => r.state === "PRESENT").map((r) => r.student_id),
+    ).size;
+    return {
+      id: s.id as string,
+      subject: (s.subject as string) ?? "Session",
+      class_section: (s.class_section as string) ?? "—",
+      mode: (s.mode as string) ?? "lecture",
+      starts_at: s.starts_at as string,
+      ends_at: (s.ends_at as string) ?? null,
+      present,
+    };
+  });
+}
+
 /** The signed-in student's own attendance history (RLS returns only their rows). */
 export async function fetchMyAttendanceLive(): Promise<AttendanceRecord[]> {
   const { data, error } = await supabase

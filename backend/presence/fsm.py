@@ -31,6 +31,14 @@ class _Track:
 @dataclass
 class PresenceFSM:
     miss_threshold: int = 3
+    # Roll-call latch: once a student is confirmed PRESENT, keep them PRESENT
+    # for the rest of the session even after they leave frame. This is the
+    # single-webcam-panning workflow — the operator sweeps the laptop across the
+    # room, each face is only briefly in view, and "seen once = present" is the
+    # intent (mark them, save them, move to the next person). With latch off the
+    # classic PRESENT -> UNVERIFIED -> ABSENT decay applies (multi-camera / fixed
+    # feed).
+    latch: bool = False
     _tracks: dict[str, _Track] = field(default_factory=dict)
     intervals: list[Interval] = field(default_factory=list)
 
@@ -46,6 +54,10 @@ class PresenceFSM:
                     tr.open_interval = Interval(sid, PRESENT, ts)
                     transitions.append((sid, PRESENT))
             else:
+                # Latched present students are never un-marked — their PRESENT
+                # interval stays open until end_session.
+                if self.latch and tr.state == PRESENT:
+                    continue
                 tr.misses += 1
                 if tr.state == PRESENT and tr.misses < self.miss_threshold:
                     self._close(tr, ts)

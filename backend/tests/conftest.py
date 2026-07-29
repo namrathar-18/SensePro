@@ -14,5 +14,8 @@ os.environ["PROCTOR_BACKEND"] = "stub"
 os.environ["SUPABASE_URL"] = ""
 os.environ["SUPABASE_SECRET_KEY"] = ""
 os.environ["ENGAGEMENT_K_MIN"] = "5"
+# Classic present/unverified/absent decay in tests (the WS endpoint reads this);
+# the roll-call latch is a live-capture behaviour, off for deterministic tests.
+os.environ["PRESENCE_LATCH"] = "false"
 # Never load a real (insightface, 512-d) enrolment file into the stub tests.
 os.environ["ENROLLMENT_JSON"] = "tests/_no_enrollments.json"

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Camera, Maximize2, Minimize2, Play, Square as StopIcon, Settings2, X,
+  Camera, Maximize2, Minimize2, Play, Square as StopIcon, Settings2, X, ShieldAlert,
 } from "lucide-react";
 import { ConnectionBadge, type ConnState } from "@/components/sp/ConnectionBadge";
 import { cn } from "@/lib/utils";
@@ -35,13 +35,28 @@ interface WsTransition {
   track_id?: number;
   ts: number;
 }
+interface WsProctorDet {
+  label: string; // "cell phone" | "person"
+  box: [number, number, number, number];
+  confidence: number;
+}
+interface WsProctor {
+  detections: WsProctorDet[];
+  flags: string[]; // flag types raised this frame: "phone" | "extra_person"
+}
 interface WsResult {
   type: "result";
   ts: number;
   faces: WsFace[];
   present: WsPresentRow[];
   transitions: WsTransition[];
+  proctor?: WsProctor;
   sent_size: { w: number; h: number };
+}
+interface ProctorAlert {
+  id: string;
+  type: string; // "phone" | "extra_person"
+  ts: number;
 }
 
 function CapturePage() {
@@ -68,11 +83,20 @@ function CapturePage() {
   const tracksRef = useRef<Map<number, TrackVis>>(new Map());
   const sentRef = useRef<{ w: number; h: number }>({ w: 480, h: 270 });
   const lastResultAtRef = useRef<number>(0);
+  // Live proctor detections for the overlay (exam mode). `atMs` lets the draw
+  // loop fade the boxes out when the phone leaves frame.
+  const proctorRef = useRef<{ dets: WsProctorDet[]; atMs: number }>({ dets: [], atMs: 0 });
 
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [deviceId, setDeviceId] = useState<string>("");
   const [sendWidth, setSendWidth] = useState(480);
-  const [fps, setFps] = useState(2);
+  // Exam mode also runs YOLO per frame on CPU (~1s/frame); sending 2fps piles
+  // frames up and lags the socket, so default exam to 1fps. Lecture is
+  // recognition-only and keeps up at 2fps. Adjustable in settings either way.
+  const [fps, setFps] = useState(() => {
+    if (typeof window === "undefined") return 2;
+    return new URLSearchParams(window.location.search).get("mode") === "exam" ? 1 : 2;
+  });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [conn, setConn] = useState<ConnState>("OFFLINE");
@@ -80,6 +104,13 @@ function CapturePage() {
   const [permError, setPermError] = useState<string | null>(null);
   const [present, setPresent] = useState<WsPresentRow[]>([]);
   const [toasts, setToasts] = useState<{ id: string; text: string; kind: WsTransition["kind"] }[]>([]);
+  // Exam-mode proctoring surfaced to the operator: a running log of raised
+  // flags and whether a phone / extra person is on screen *right now*.
+  const [proctorFlags, setProctorFlags] = useState<ProctorAlert[]>([]);
+  const [proctorLive, setProctorLive] = useState<{ phone: boolean; extra: boolean }>({
+    phone: false,
+    extra: false,
+  });
   const [elapsed, setElapsed] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
   const [rosterHint] = useState({ enrolled: 53 });
@@ -162,11 +193,34 @@ function CapturePage() {
       const ctx = overlay.getContext("2d");
       if (!ctx) return;
       ctx.clearRect(0, 0, w, h);
-      const tracks = tracksRef.current;
-      if (tracks.size === 0) return;
       const sx = w / sentRef.current.w;
       const sy = h / sentRef.current.h;
       const now = performance.now();
+
+      // --- Proctor overlay (exam mode): a detected phone gets a pulsing red
+      // box + confidence, drawn before faces so it shows even with no track. ---
+      const pv = proctorRef.current;
+      if (pv.dets.length && now - pv.atMs < 1200) {
+        const pulse = 0.55 + 0.45 * Math.abs(Math.sin(now / 190));
+        ctx.font = '700 12px "IBM Plex Mono", monospace';
+        for (const d of pv.dets) {
+          if (d.label !== "cell phone") continue; // person boxes would shadow the student's own body
+          const [x0, y0, x1, y1] = d.box;
+          const rx = x0 * sx, ry = y0 * sy, rw = (x1 - x0) * sx, rh = (y1 - y0) * sy;
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = `rgba(244,63,94,${pulse.toFixed(3)})`;
+          ctx.strokeRect(rx, ry, rw, rh);
+          const label = `PHONE ${(d.confidence * 100).toFixed(0)}%`;
+          const tw = ctx.measureText(label).width + 12;
+          ctx.fillStyle = "rgba(244,63,94,0.94)";
+          ctx.fillRect(rx, Math.max(0, ry - 20), tw, 20);
+          ctx.fillStyle = "#fff";
+          ctx.fillText(label, rx + 6, Math.max(12, ry - 6));
+        }
+      }
+
+      const tracks = tracksRef.current;
+      if (tracks.size === 0) return;
       ctx.lineWidth = 2;
       ctx.font = '500 12px "IBM Plex Mono", monospace';
       const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
@@ -307,6 +361,23 @@ function CapturePage() {
           else if (t.kind === "recognised" && t.name) pushToast(`${t.name} recognised`, "recognised");
           else if (t.kind === "leave" && t.name) pushToast(`${t.name} left`, "leave");
         }
+
+        // Proctor (exam mode): stash detections for the overlay, reflect live
+        // phone/extra-person state, and log any flag the engine actually raised.
+        const proctor = msg.proctor;
+        if (proctor) {
+          proctorRef.current = { dets: proctor.detections ?? [], atMs: now };
+          const phoneLive = (proctor.detections ?? []).some((d) => d.label === "cell phone");
+          const extraLive = (proctor.detections ?? []).filter((d) => d.label === "person").length > msg.faces.length;
+          setProctorLive({ phone: phoneLive, extra: extraLive });
+          for (const ft of proctor.flags ?? []) {
+            setProctorFlags((prev) => [
+              { id: crypto.randomUUID(), type: ft, ts: Date.now() / 1000 },
+              ...prev.slice(0, 49),
+            ]);
+            pushToast(ft === "phone" ? "Phone flagged for review" : "Extra person flagged", "leave");
+          }
+        }
       } catch {}
     },
     [pushToast],
@@ -382,6 +453,9 @@ function CapturePage() {
       startEpochRef.current = Date.now();
       setElapsed(0);
       setPresent([]);
+      setProctorFlags([]);
+      setProctorLive({ phone: false, extra: false });
+      proctorRef.current = { dets: [], atMs: 0 };
       setRunning(true);
       // Reuse the session created on the setup screen; only open one here if the
       // user came straight to /capture. Failing quietly keeps the camera live
@@ -613,6 +687,28 @@ function CapturePage() {
               </motion.div>
             )}
 
+            {/* Live proctor alert (exam mode): a phone or extra person on screen
+                right now. Distinct from the review queue — this is the operator
+                seeing it happen. */}
+            {sessionInfo.mode === "exam" && running && (proctorLive.phone || proctorLive.extra) && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center"
+              >
+                <div
+                  className="flex items-center gap-3 rounded-md border border-[color:var(--bad)] bg-[color:var(--bad)]/90 px-5 py-3 shadow-lg"
+                  style={{ animation: "sensepro-pulse 1.2s ease-in-out infinite" }}
+                >
+                  <ShieldAlert className="h-5 w-5 text-white" />
+                  <span className="font-mono-nums text-sm font-bold uppercase tracking-[0.14em] text-white">
+                    {proctorLive.phone ? "Phone detected in frame" : "Extra person in frame"}
+                  </span>
+                </div>
+              </motion.div>
+            )}
+
             {/* Empty / permission states */}
             {!running && !permError && <IdleState />}
             {permError && <ErrorState message={permError} onRetry={start} />}
@@ -744,6 +840,51 @@ function CapturePage() {
               </ul>
             )}
           </div>
+
+          {/* Proctor panel (exam mode only): live status + flags raised for the
+              review queue this session. */}
+          {sessionInfo.mode === "exam" && (
+            <div className="border-t border-[color:var(--line)] px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  <ShieldAlert className="h-3.5 w-3.5" /> Proctor
+                </div>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-[0.14em]",
+                    proctorLive.phone || proctorLive.extra
+                      ? "bg-[color:var(--bad)]/15 text-[color:var(--bad)]"
+                      : "bg-[color:var(--ok)]/15 text-[color:var(--ok)]",
+                  )}
+                >
+                  {proctorLive.phone ? "phone" : proctorLive.extra ? "extra person" : "clear"}
+                </span>
+              </div>
+              <div className="mt-3 flex items-baseline gap-2">
+                <div className="font-display text-2xl font-extrabold text-[color:var(--ink)]">
+                  {proctorFlags.length.toString().padStart(2, "0")}
+                </div>
+                <div className="font-mono-nums text-[11px] text-[color:var(--muted)]">
+                  flag{proctorFlags.length === 1 ? "" : "s"} sent to review
+                </div>
+              </div>
+              {proctorFlags.length > 0 && (
+                <ul className="mt-3 flex max-h-28 flex-col gap-1 overflow-y-auto">
+                  {proctorFlags.slice(0, 6).map((f) => (
+                    <li
+                      key={f.id}
+                      className="flex items-center justify-between font-mono-nums text-[11px] text-[color:var(--muted)]"
+                    >
+                      <span className="text-[color:var(--ink)]">
+                        {f.type === "phone" ? "Phone" : "Extra person"}
+                      </span>
+                      <span>{tsAgo(f.ts)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </aside>
 
         {/* Settings sheet */}

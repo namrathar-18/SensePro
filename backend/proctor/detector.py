@@ -86,5 +86,5 @@ def build_proctor_detector() -> ObjectDetector:
     from app.config import settings
 
     if settings.proctor_backend.lower() == "yolo":
-        return YoloProctorDetector()
+        return YoloProctorDetector(conf=settings.proctor_conf)
     return StubProctorDetector()

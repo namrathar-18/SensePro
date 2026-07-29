@@ -5,7 +5,8 @@ import hashlib
 import json
 from pathlib import Path
 
-REPO = Path(r"C:/Users/namrp/AppData/Local/Temp/claude/D--Projects-sensepro/6fc68360-adc3-43e3-87d7-537c06477d04/scratchpad/SensePro-build")
+# Repo root, relative to this script (scripts/gen_roster.py) — portable.
+REPO = Path(__file__).resolve().parent.parent
 CLASS_SECTION = "4MCA-B"
 CONSENT_VERSION = "v1"
 

@@ -2,7 +2,7 @@
 
 The classroom browser streams frames over the /ws/capture WebSocket; the server
 runs detect -> track -> re-ID -> presence and streams results back. Frames are
-processed in memory and never persisted (CLAUDE.md privacy invariant).
+processed in memory and never persisted (core privacy invariant).
 """
 
 from __future__ import annotations

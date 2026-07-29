@@ -43,11 +43,12 @@ class SessionPipeline:
         store: EmbeddingStore,
         reid_interval_s: float = 30.0,
         miss_threshold: int = 3,
+        latch: bool = False,
     ) -> None:
         self.detector, self.embedder = build_backend()
         self.tracker = IoUTracker()
         self.store = store
-        self.fsm = PresenceFSM(miss_threshold=miss_threshold)
+        self.fsm = PresenceFSM(miss_threshold=miss_threshold, latch=latch)
         self.reid_interval_s = reid_interval_s
         self._last_reid_pass = -1e9
         self.last_tracks: list[Track] = []
@@ -69,18 +70,25 @@ class SessionPipeline:
                 sid, score = self.store.match(vec)
                 tr.student_id, tr.match_score, tr.last_reid_ts = sid, score, ts
 
-        # Periodic re-confirmation of all tracks + the presence FSM update.
+        # Periodic re-confirmation of all tracks' identity.
         do_reid = (ts - self._last_reid_pass) >= self.reid_interval_s
-        transitions: list[tuple[str, str]] = []
         if do_reid:
             for tr in tracks:
                 if (tr.last_reid_ts is None) or (ts - tr.last_reid_ts >= self.reid_interval_s):
                     vec = self.embedder.embed(frame_bgr, tr.det)
                     sid, score = self.store.match(vec)
                     tr.student_id, tr.match_score, tr.last_reid_ts = sid, score, ts
+            self._last_reid_pass = ts
+
+        # Drive the presence FSM. In roll-call latch mode (single webcam panning
+        # a room) observe EVERY frame, so a face that is only briefly in view is
+        # marked PRESENT the instant it's recognised — latching means this only
+        # ever promotes newly-seen students, never un-marks anyone. In decay mode
+        # observe only on the re-ID tick (miss_threshold counts re-ID passes).
+        transitions: list[tuple[str, str]] = []
+        if self.fsm.latch or do_reid:
             seen = {t.student_id for t in tracks if t.student_id}
             transitions = self.fsm.observe(seen, self.store.roster, ts)
-            self._last_reid_pass = ts
 
         return {
             "type": "result",

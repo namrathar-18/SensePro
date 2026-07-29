@@ -17,3 +17,7 @@ dist/
 # Face embeddings (biometric data) — never commit
 enrollments.json
 *.enrollments.json
+
+# YOLO weights (auto-downloaded on first proctor run)
+yolov8n.pt
+**/yolov8n.pt

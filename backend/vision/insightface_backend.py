@@ -3,7 +3,7 @@
 Imported lazily and only when VISION_BACKEND=insightface, so the stub path has
 zero heavy dependencies. Install with:  pip install -e '.[insightface]'
 
-NOTE (CLAUDE.md invariant): no training here. We load the pretrained buffalo_l
+NOTE (project invariant): no training here. We load the pretrained buffalo_l
 pack and compute embeddings only.
 """
 

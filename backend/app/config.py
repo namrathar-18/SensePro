@@ -5,6 +5,10 @@ class Settings(BaseSettings):
     vision_backend: str = "stub"
     reid_interval_s: float = 30.0
     miss_threshold: int = 3
+    # Roll-call latch (single laptop webcam panning a room): once recognised,
+    # a student stays PRESENT for the whole session. Off = classic present/
+    # unverified/absent decay for a fixed multi-camera feed.
+    presence_latch: bool = True
     cosine_threshold: float = 0.45
     enrollment_json: str = "enrollments.json"  # dev: load embeddings from file
     # reg_no -> full_name map so the live roster / capture overlay show names,
@@ -37,6 +41,10 @@ class Settings(BaseSettings):
     gaze_window_s: float = 10.0
     gaze_pitch_down_deg: float = -25.0
     proctor_cooldown_s: float = 30.0
+    # YOLO confidence floor for proctor objects. 0.30 (not the library's 0.35)
+    # so a hand-held phone at webcam distance is still caught; the human review
+    # queue absorbs the few extra low-confidence candidates.
+    proctor_conf: float = 0.30
 
     # VNEI engagement (Phase 3, backend/engagement). Zone bands are fractions
     # of frame height (camera at the front: lower in frame = nearer = front).

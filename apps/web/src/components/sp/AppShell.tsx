@@ -29,7 +29,7 @@ const NAV: NavItem[] = [
   { to: "/management", label: "Management", icon: BarChart3, mono: "MGT", roles: ["management", "admin"] },
   { to: "/trends", label: "Trends", icon: LineChart, mono: "TRD", roles: ["management", "admin"] },
   { to: "/admin", label: "Admin", icon: Shield, mono: "ADM", roles: ["admin"] },
-  { to: "/me", label: "Me", icon: User, mono: "ME" },
+  { to: "/me", label: "Me", icon: User, mono: "ME", roles: ["student"] },
 ];
 
 export function AppShell({ children, title }: { children: ReactNode; title?: string }) {

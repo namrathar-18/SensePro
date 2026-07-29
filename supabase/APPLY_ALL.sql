@@ -161,7 +161,7 @@ create policy "aggregates readable by staff" on engagement_zone_aggregates
 -- client auth. Every policy below governs client (anon/authenticated) access
 -- only.
 --
--- Invariants this file exists to enforce (see CLAUDE.md):
+-- Invariants this file exists to enforce (see ENGINEERING.md):
 --   - no per-student engagement read path (engagement_zone_aggregates has no
 --     student_id column, so this is structurally true regardless of policy)
 --   - proctor flags are reviewed, never deleted or auto-actioned by staff
