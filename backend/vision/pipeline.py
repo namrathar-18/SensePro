@@ -60,6 +60,17 @@ class SessionPipeline:
         # this frame's tracks instead of re-running detection.
         self.last_tracks = tracks
 
+        # Immediately identify any track that has no identity yet — a NEW track,
+        # e.g. after the camera moved and the old track was lost. This keeps
+        # recognition sticky while the frame moves instead of waiting for the
+        # next periodic pass (the reason a moved face read as "unknown").
+        for tr in tracks:
+            if tr.student_id is None:
+                vec = self.embedder.embed(frame_bgr, tr.det)
+                sid, score = self.store.match(vec)
+                tr.student_id, tr.match_score, tr.last_reid_ts = sid, score, ts
+
+        # Periodic re-confirmation of all tracks + the presence FSM update.
         do_reid = (ts - self._last_reid_pass) >= self.reid_interval_s
         transitions: list[tuple[str, str]] = []
         if do_reid:
