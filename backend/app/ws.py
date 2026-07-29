@@ -154,10 +154,18 @@ async def capture(ws: WebSocket) -> None:
             if msg.get("type") == "end":
                 ts = float(msg.get("ts", 0.0))
                 pipe.fsm.end_session(ts)
+                # Closing writes must never prevent the client from getting its
+                # session_ended ack — swallow and log any late write failure.
                 if recorder is not None:
-                    await run_in_threadpool(recorder.close, ts)
+                    try:
+                        await run_in_threadpool(recorder.close, ts)
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning("recorder close failed: %s", exc)
                 if aggregator is not None:
-                    await run_in_threadpool(aggregator.flush)
+                    try:
+                        await run_in_threadpool(aggregator.flush)
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning("aggregator flush failed: %s", exc)
                 await ws.send_json({"type": "session_ended", "ts": ts})
                 break
             if msg.get("type") != "frame":

@@ -26,7 +26,12 @@ class EmbeddingStore:
     def match(self, vec: np.ndarray) -> tuple[str | None, float]:
         if self._mat is None or not len(self._ids):
             return None, 0.0
-        sims = self._mat @ _l2(vec).astype(np.float32)
+        v = _l2(vec).astype(np.float32)
+        # Guard against an embedding-dimension mismatch (e.g. a stub 64-d vector
+        # against an InsightFace 512-d enrolment file) — no match, never crash.
+        if v.shape[0] != self._mat.shape[1]:
+            return None, 0.0
+        sims = self._mat @ v
         i = int(np.argmax(sims))
         score = float(sims[i])
         return (self._ids[i], score) if score >= self.threshold else (None, score)
