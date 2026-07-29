@@ -15,7 +15,6 @@ from vision.embedding_store import EmbeddingStore
 from vision.tracker import IoUTracker
 from vision.types import Track
 
-
 # The InsightFace model pack (~300 MB) is loaded ONCE and reused across every
 # session/connection. Reloading it per WebSocket froze the event loop for
 # ~5-10s each time, which tripped the WS keepalive and thrashed reconnects.
