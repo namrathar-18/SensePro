@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Camera, Maximize2, Minimize2, Play, Square as StopIcon, Settings2, X, ShieldAlert,
+  Camera, Maximize2, Minimize2, Play, Settings2, X, ShieldAlert, Save, CheckCircle2,
 } from "lucide-react";
 import { ConnectionBadge, type ConnState } from "@/components/sp/ConnectionBadge";
 import { cn } from "@/lib/utils";
@@ -86,6 +86,13 @@ function CapturePage() {
   // Live proctor detections for the overlay (exam mode). `atMs` lets the draw
   // loop fade the boxes out when the phone leaves frame.
   const proctorRef = useRef<{ dets: WsProctorDet[]; atMs: number }>({ dets: [], atMs: 0 });
+  // Save-and-end flow: `stoppingRef` stops the socket auto-reconnecting after an
+  // intentional end; `endAckRef` is the finalize callback fired when the server
+  // acks the end (or on a timeout fallback).
+  const stoppingRef = useRef(false);
+  const endAckRef = useRef<null | (() => void)>(null);
+  // Mirrors `present` for the save handler (avoids a stale closure on click).
+  const presentRef = useRef<WsPresentRow[]>([]);
 
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [deviceId, setDeviceId] = useState<string>("");
@@ -112,6 +119,8 @@ function CapturePage() {
     extra: false,
   });
   const [elapsed, setElapsed] = useState(0);
+  // Set when a session is saved & ended — drives the confirmation overlay.
+  const [savedSummary, setSavedSummary] = useState<{ present: number; total: number } | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [rosterHint] = useState({ enrolled: 53 });
   const sessionIdRef = useRef<string | null>(null);
@@ -309,6 +318,14 @@ function CapturePage() {
     (ev: MessageEvent) => {
       try {
         const data = JSON.parse(typeof ev.data === "string" ? ev.data : "");
+        // The server acked our end request — attendance intervals are closed.
+        if (data?.type === "session_ended") {
+          if (endAckRef.current) {
+            endAckRef.current();
+            endAckRef.current = null;
+          }
+          return;
+        }
         if (data?.type !== "result") return;
         const msg = data as WsResult;
         sentRef.current = msg.sent_size;
@@ -355,7 +372,10 @@ function CapturePage() {
           if (!seen.has(id) && now - v.lastSeenTs > 800) tracksRef.current.delete(id);
         }
         setStale(false);
-        if (msg.present) setPresent(msg.present);
+        if (msg.present) {
+          setPresent(msg.present);
+          presentRef.current = msg.present;
+        }
         for (const t of msg.transitions ?? []) {
           if (t.kind === "enter" && t.name) pushToast(`${t.name} entered`, "enter");
           else if (t.kind === "recognised" && t.name) pushToast(`${t.name} recognised`, "recognised");
@@ -396,7 +416,8 @@ function CapturePage() {
       ws.onclose = () => {
         setConn("OFFLINE");
         setStale(true);
-        if (running) {
+        // Don't reconnect if we're intentionally ending the session.
+        if (running && !stoppingRef.current) {
           if (reconnectTimerRef.current) window.clearTimeout(reconnectTimerRef.current);
           reconnectTimerRef.current = window.setTimeout(openSocket, 2500);
         }
@@ -453,9 +474,13 @@ function CapturePage() {
       startEpochRef.current = Date.now();
       setElapsed(0);
       setPresent([]);
+      presentRef.current = [];
       setProctorFlags([]);
       setProctorLive({ phone: false, extra: false });
       proctorRef.current = { dets: [], atMs: 0 };
+      setSavedSummary(null);
+      stoppingRef.current = false;
+      endAckRef.current = null;
       setRunning(true);
       // Reuse the session created on the setup screen; only open one here if the
       // user came straight to /capture. Failing quietly keeps the camera live
@@ -484,15 +509,10 @@ function CapturePage() {
     }
   }, [deviceId, openSocket, startSending, sessionInfo]);
 
-  const stop = useCallback(() => {
-    const ws = wsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      try {
-        ws.send(JSON.stringify({ type: "end", ts: (Date.now() - startEpochRef.current) / 1000 }));
-      } catch {}
-      ws.close();
-    }
-    wsRef.current = null;
+  // Tear the session down: stop timers, camera, and socket. Does NOT send an
+  // end frame — callers decide whether to persist first (saveAndEnd) or not.
+  const teardown = useCallback(() => {
+    stoppingRef.current = true;
     if (sendTimerRef.current) {
       window.clearInterval(sendTimerRef.current);
       sendTimerRef.current = null;
@@ -501,6 +521,13 @@ function CapturePage() {
       window.clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
     }
+    const ws = wsRef.current;
+    if (ws) {
+      try {
+        ws.close();
+      } catch {}
+    }
+    wsRef.current = null;
     const s = streamRef.current;
     if (s) s.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -508,6 +535,49 @@ function CapturePage() {
     setConn("OFFLINE");
     tracksRef.current.clear();
   }, []);
+
+  // Unmount / abrupt stop: fire an end frame if we can, then tear down. No
+  // confirmation UI — that's the saveAndEnd path below.
+  const stop = useCallback(() => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.send(JSON.stringify({ type: "end", ts: (Date.now() - startEpochRef.current) / 1000 }));
+      } catch {}
+    }
+    teardown();
+  }, [teardown]);
+
+  // "Save & end attendance": persist by sending the end frame, wait for the
+  // server's session_ended ack (or a short timeout), then tear down and show
+  // the saved-summary overlay. Attendance rows are written live as students are
+  // recognised; the end frame closes their open intervals server-side.
+  const saveAndEnd = useCallback(() => {
+    const present = presentRef.current.length;
+    const total = rosterHint.enrolled;
+    const finalize = () => {
+      teardown();
+      setSavedSummary({ present, total });
+    };
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      stoppingRef.current = true; // stop the reconnect loop while we close out
+      endAckRef.current = finalize;
+      try {
+        ws.send(JSON.stringify({ type: "end", ts: (Date.now() - startEpochRef.current) / 1000 }));
+      } catch {}
+      // Fallback: if no ack arrives (socket already degraded), finalize anyway —
+      // the live-written rows are already saved.
+      window.setTimeout(() => {
+        if (endAckRef.current) {
+          endAckRef.current = null;
+          finalize();
+        }
+      }, 3500);
+    } else {
+      finalize();
+    }
+  }, [teardown, rosterHint.enrolled]);
 
   useEffect(() => () => stop(), [stop]);
 
@@ -956,15 +1026,71 @@ function CapturePage() {
             </button>
           ) : (
             <button
-              onClick={stop}
-              className="flex h-14 items-center gap-3 rounded-md border border-[color:var(--bad)]/60 bg-[color:var(--bad)]/10 px-8 text-base font-semibold tracking-wide text-[color:var(--bad)] transition-colors hover:bg-[color:var(--bad)]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--bad)]"
+              onClick={saveAndEnd}
+              className="flex h-14 items-center gap-3 rounded-md bg-[color:var(--ok)] px-8 text-base font-semibold tracking-wide text-white transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ok)]"
             >
-              <StopIcon className="h-5 w-5" fill="currentColor" />
-              End session
+              <Save className="h-5 w-5" />
+              Save &amp; end attendance
             </button>
           )}
         </div>
       </footer>
+
+      {/* Saved-summary overlay — shown after Save & end attendance */}
+      <AnimatePresence>
+        {savedSummary && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="glass-panel w-[min(92vw,460px)] p-8 text-center"
+            >
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[color:var(--ok)]/40 bg-[color:var(--ok)]/10">
+                <CheckCircle2 className="h-8 w-8 text-[color:var(--ok)]" />
+              </div>
+              <div className="mt-5 font-display text-2xl font-extrabold tracking-tight text-[color:var(--ink)]">
+                Attendance saved
+              </div>
+              <div className="mt-2 text-sm text-[color:var(--muted)]">
+                {sessionInfo.section} · {sessionInfo.title}
+              </div>
+              <div className="mt-6 flex items-baseline justify-center gap-2">
+                <span className="font-display text-5xl font-extrabold text-[color:var(--ok)]">
+                  {savedSummary.present}
+                </span>
+                <span className="font-mono-nums text-lg text-[color:var(--muted)]">
+                  / {savedSummary.total} present
+                </span>
+              </div>
+              <p className="mt-4 font-mono-nums text-[11px] leading-relaxed tracking-wide text-[color:var(--muted)]">
+                Records written to the session history. Absent students are everyone not marked present.
+              </p>
+              <div className="mt-7 flex items-center justify-center gap-3">
+                <a
+                  href="/sessions"
+                  className="flex h-12 items-center gap-2 rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)] px-5 text-sm font-semibold text-[color:var(--ink)] transition-colors hover:bg-[color:var(--surface)]"
+                >
+                  View sessions
+                </a>
+                <button
+                  onClick={() => setSavedSummary(null)}
+                  className="flex h-12 items-center gap-2 rounded-md bg-[color:var(--primary)] px-6 text-sm font-semibold text-white transition-colors hover:bg-[color:var(--primary-deep)]"
+                >
+                  <Play className="h-4 w-4" fill="currentColor" />
+                  New session
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

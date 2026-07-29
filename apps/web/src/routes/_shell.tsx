@@ -26,7 +26,11 @@ const PAGE_ROLES: Record<string, Role[]> = {
   "/management": ["management", "admin"],
   "/trends": ["management", "admin"],
   "/admin": ["admin"],
-  "/me": ["teacher", "management", "admin", "student"],
+  // "Me" is a student's personal attendance page. Staff have no personal
+  // attendance — and because teacher/management/admin hold staff-read RLS on
+  // presence_intervals, letting them open /me would surface the whole class's
+  // rows (not "theirs"). Students only.
+  "/me": ["student"],
 };
 
 function allowedRolesFor(path: string): Role[] | undefined {
