@@ -103,10 +103,13 @@ function ProctorPage() {
                     </span>
                     <ChevronRight className="h-3.5 w-3.5 text-[color:var(--muted)]" />
                   </div>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-[color:var(--muted)]">
-                    <span className="font-mono-nums">{f.ts}</span>
-                    <span>·</span>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[color:var(--muted)]">
                     <span>{TYPE_LABELS[f.type]}</span>
+                    <span>·</span>
+                    <span className="font-mono-nums">{f.ts}</span>
+                  </div>
+                  <div className="mt-0.5 font-mono-nums text-[11px] text-[color:var(--primary)]">
+                    {f.session}
                   </div>
                   <div className="mt-1.5">
                     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-[0.16em] ${severityOf(f.type).cls}`}>

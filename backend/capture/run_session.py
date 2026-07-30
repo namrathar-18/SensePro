@@ -211,7 +211,6 @@ def build_observers(
             session_start=session_start,
             cooldown_s=settings.proctor_cooldown_s,
             student_id_map=student_id_map or {},
-            extra_person_min_frames=settings.proctor_extra_person_min_frames,
         )
     extractor = SignalExtractor()
     aggregator = ZoneAggregator(

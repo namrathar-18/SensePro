@@ -7,11 +7,11 @@ upheld. There is no auto-penalty path and no verdict field anywhere here.
 
 Per frame: feed each track's head pitch to the gaze suppressor (landmarks
 come from the real vision backend; the stub has none, so tests drive the
-suppressor directly), then detect objects. A phone is attributed to the
+suppressor directly), then detect phones. A phone is attributed to the
 nearest track within adjacency range — if that track recently looked down
-(writing posture), the candidate is suppressed. More detected persons than
-tracked faces raises one extra_person flag. A per-key cooldown stops the same
-event re-flagging every sampled frame.
+(writing posture), the candidate is suppressed. A per-key cooldown stops the
+same event re-flagging every sampled frame. (The "extra person" flag was
+removed: body-vs-face counts were unreliable under camera motion.)
 """
 
 from __future__ import annotations
@@ -47,11 +47,7 @@ class ProctorEngine:
     # attributed flag is rejected by the DB and dropped. Empty = write ids as-is
     # (offline/stub loop, which persists nothing anyway).
     student_id_map: dict[str, str] = field(default_factory=dict)
-    # Extra-person must hold this many consecutive frames before flagging, so a
-    # face-detection dropout during camera motion doesn't fire a false positive.
-    extra_person_min_frames: int = 3
     _last_flag: dict[tuple[str, int | None], float] = field(default_factory=dict)
-    _extra_streak: int = 0
 
     def observe(
         self,
@@ -76,17 +72,6 @@ class ProctorEngine:
                 flag = self._phone_candidate(det, tracks, rel_ts)
                 if flag is not None:
                     written.append(flag)
-        n_persons = sum(1 for d in detections if d.label == "person")
-        if n_persons > len(tracks):
-            self._extra_streak += 1
-        else:
-            self._extra_streak = 0
-        # Only flag once the excess has been sustained — filters the transient
-        # "more bodies than faces" spike that camera motion / blur produces.
-        if self._extra_streak >= self.extra_person_min_frames:
-            flag = self._flag("extra_person", None, rel_ts)
-            if flag is not None:
-                written.append(flag)
         return written
 
     def _phone_candidate(

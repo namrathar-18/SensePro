@@ -104,9 +104,6 @@ function CapturePage() {
   // Live proctor detections for the overlay (exam mode). `atMs` lets the draw
   // loop fade the boxes out when the phone leaves frame.
   const proctorRef = useRef<{ dets: WsProctorDet[]; atMs: number }>({ dets: [], atMs: 0 });
-  // Debounce the "extra person" state: bodies (YOLO) outlast faces through
-  // camera motion, so require the mismatch to hold a few frames before showing.
-  const extraStreakRef = useRef(0);
   // Save-and-end flow: `stoppingRef` stops the socket auto-reconnecting after an
   // intentional end; `endAckRef` is the finalize callback fired when the server
   // acks the end (or on a timeout fallback).
@@ -141,9 +138,8 @@ function CapturePage() {
   const [proctorFlags, setProctorFlags] = useState<ProctorAlert[]>([]);
   const [proctorLive, setProctorLive] = useState<{
     phone: boolean;
-    extra: boolean;
     phoneOwner: string | null;
-  }>({ phone: false, extra: false, phoneOwner: null });
+  }>({ phone: false, phoneOwner: null });
   // Live class-level engagement (aggregate; null until the server sends it).
   const [engagement, setEngagement] = useState<WsEngagement | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -424,28 +420,20 @@ function CapturePage() {
           const dets = proctor.detections ?? [];
           proctorRef.current = { dets, atMs: now };
           const phoneDet = dets.find((d) => d.label === "cell phone");
-          const phoneLive = !!phoneDet;
-          const extraNow = dets.filter((d) => d.label === "person").length > msg.faces.length;
-          extraStreakRef.current = extraNow ? extraStreakRef.current + 1 : 0;
-          const extraLive = extraStreakRef.current >= 3; // sustained, not a motion blip
           setProctorLive({
-            phone: phoneLive,
-            extra: extraLive,
+            phone: !!phoneDet,
             phoneOwner: phoneDet?.student_name ?? null,
           });
           for (const f of proctor.flags ?? []) {
             // Name comes from the detection attribution (reg_no→name); the flag
             // row itself carries the DB UUID, not a nameable reg_no.
-            const name = f.flag_type === "phone" ? (phoneDet?.student_name ?? null) : null;
+            const name = phoneDet?.student_name ?? null;
             setProctorFlags((prev) => [
               { id: crypto.randomUUID(), type: f.flag_type, name, ts: Date.now() / 1000 },
               ...prev.slice(0, 49),
             ]);
             const who = name ? ` · ${name}` : "";
-            pushToast(
-              f.flag_type === "phone" ? `Phone flagged${who}` : `Extra person flagged${who}`,
-              "leave",
-            );
+            pushToast(`Phone flagged${who}`, "leave");
           }
         }
 
@@ -531,10 +519,9 @@ function CapturePage() {
       setPresent([]);
       presentRef.current = [];
       setProctorFlags([]);
-      setProctorLive({ phone: false, extra: false, phoneOwner: null });
+      setProctorLive({ phone: false, phoneOwner: null });
       setEngagement(null);
       proctorRef.current = { dets: [], atMs: 0 };
-      extraStreakRef.current = 0;
       setSavedSummary(null);
       stoppingRef.current = false;
       endAckRef.current = null;
@@ -814,9 +801,9 @@ function CapturePage() {
               </motion.div>
             )}
 
-            {/* Live phone/person alert. Exam = red proctor violation; lecture =
-                amber distraction (engagement) signal, not a review flag. */}
-            {running && (proctorLive.phone || (sessionInfo.mode === "exam" && proctorLive.extra)) && (
+            {/* Live phone alert. Exam = red proctor violation; lecture = amber
+                distraction (engagement) signal, not a review flag. */}
+            {running && proctorLive.phone && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -834,15 +821,9 @@ function CapturePage() {
                 >
                   <ShieldAlert className="h-5 w-5" />
                   <span className="font-mono-nums text-sm font-bold uppercase tracking-[0.14em]">
-                    {(() => {
-                      const who = proctorLive.phoneOwner ? ` · ${proctorLive.phoneOwner}` : "";
-                      if (proctorLive.phone) {
-                        return sessionInfo.mode === "exam"
-                          ? `Phone${who}`
-                          : `Phone${who} · distraction`;
-                      }
-                      return "Extra person in frame";
-                    })()}
+                    {`Phone${proctorLive.phoneOwner ? ` · ${proctorLive.phoneOwner}` : ""}${
+                      sessionInfo.mode === "exam" ? "" : " · distraction"
+                    }`}
                   </span>
                 </div>
               </motion.div>
@@ -1048,12 +1029,12 @@ function CapturePage() {
                 <span
                   className={cn(
                     "rounded-full px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-[0.14em]",
-                    proctorLive.phone || proctorLive.extra
+                    proctorLive.phone
                       ? "bg-[color:var(--bad)]/15 text-[color:var(--bad)]"
                       : "bg-[color:var(--ok)]/15 text-[color:var(--ok)]",
                   )}
                 >
-                  {proctorLive.phone ? "phone" : proctorLive.extra ? "extra person" : "clear"}
+                  {proctorLive.phone ? "phone" : "clear"}
                 </span>
               </div>
               <div className="mt-3 flex items-baseline gap-2">
@@ -1072,7 +1053,7 @@ function CapturePage() {
                       className="flex items-center justify-between font-mono-nums text-[11px] text-[color:var(--muted)]"
                     >
                       <span className="text-[color:var(--ink)]">
-                        {f.type === "phone" ? "Phone" : "Extra person"}
+                        Phone
                         {f.name ? <span className="text-[color:var(--muted)]"> · {f.name}</span> : null}
                       </span>
                       <span>{tsAgo(f.ts)}</span>

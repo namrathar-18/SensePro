@@ -99,6 +99,10 @@ export function ProctorReviewPanel({ sessionId, studentNames, onPendingCount }: 
           <div className="mt-0.5 font-display text-lg font-extrabold tracking-tight text-[color:var(--ink)]">
             Awaiting review
           </div>
+          <div className="mt-0.5 max-w-md text-[11px] text-[color:var(--muted)]">
+            Phones the camera flagged this session — you dismiss or uphold each. The system never
+            penalises on its own.
+          </div>
         </div>
         <div className="flex flex-col items-end gap-1">
           <div className="font-mono-nums text-[11px] text-[color:var(--muted)]">
@@ -161,7 +165,7 @@ export function ProctorReviewPanel({ sessionId, studentNames, onPendingCount }: 
                         {who} · {TYPE_META[f.flag_type].label}
                       </div>
                       <div className="font-mono-nums text-[11px] text-[color:var(--muted)]">
-                        {f.session_id} · {new Date(f.flagged_at).toLocaleTimeString()}
+                        {new Date(f.flagged_at).toLocaleTimeString()}
                       </div>
                     </div>
                     <span

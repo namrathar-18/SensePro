@@ -45,11 +45,6 @@ class Settings(BaseSettings):
     gaze_window_s: float = 10.0
     gaze_pitch_down_deg: float = -25.0
     proctor_cooldown_s: float = 30.0
-    # Extra-person flag must hold for this many consecutive sampled frames before
-    # firing — YOLO tracks bodies (which persist through camera motion) while
-    # face detection drops out during the blur, so a raw count mismatch flickers
-    # a false "extra person" whenever the frame moves. Sustained = real.
-    proctor_extra_person_min_frames: int = 3
     # YOLO confidence floor for proctor objects. 0.30 (not the library's 0.35)
     # so a hand-held phone at webcam distance is still caught; the human review
     # queue absorbs the few extra low-confidence candidates.

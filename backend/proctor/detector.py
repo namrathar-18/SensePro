@@ -18,8 +18,9 @@ import cv2
 import numpy as np
 
 # COCO class names, hue centres for the stub markers (OpenCV hue is 0-179:
-# blue = 120, green = 60; the vision stub's red face marker = 0 matches neither).
-_STUB_MARKERS = (("cell phone", 120), ("person", 60))
+# blue = 120; the vision stub's red face marker = 0 doesn't match). Proctoring
+# only reads phones now — the "extra person" concept was removed.
+_STUB_MARKERS = (("cell phone", 120),)
 
 
 @dataclass(frozen=True)
@@ -60,7 +61,7 @@ class YoloProctorDetector:
     """Pretrained YOLOv8n (COCO) filtered to the two labels proctoring needs.
     Lazy import keeps ultralytics optional: pip install -e '.[proctor]'."""
 
-    LABELS = frozenset({"cell phone", "person"})
+    LABELS = frozenset({"cell phone"})
 
     def __init__(self, model_path: str = "yolov8n.pt", conf: float = 0.35) -> None:
         from ultralytics import YOLO  # lazy: CI and the stub path never need it
