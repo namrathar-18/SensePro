@@ -119,6 +119,9 @@ class PresenceWriter(Protocol):
     def close_interval(self, row: PresenceInterval) -> None: ...
     def create_flag(self, row: ProctorFlagRow) -> None: ...
     def create_zone_aggregate(self, row: ZoneAggregateRow) -> None: ...
+    def set_manual_presence(
+        self, session_id: str, reg_no: str, state: str, at: datetime
+    ) -> None: ...
 
 
 class NoopWriter:
@@ -144,6 +147,11 @@ class NoopWriter:
 
     def create_zone_aggregate(self, row: ZoneAggregateRow) -> None:
         logger.debug("noop zone aggregate %s vnei=%s", row.zone, row.vnei)
+
+    def set_manual_presence(
+        self, session_id: str, reg_no: str, state: str, at: datetime
+    ) -> None:
+        logger.info("noop manual presence %s %s -> %s", session_id, reg_no, state)
 
 
 class SupabaseWriter:
@@ -232,6 +240,40 @@ class SupabaseWriter:
             r.raise_for_status()
         except Exception as exc:  # noqa: BLE001
             logger.warning("zone aggregate dropped: %s (%s)", row.zone, exc)
+
+    def set_manual_presence(
+        self, session_id: str, reg_no: str, state: str, at: datetime
+    ) -> None:
+        """Teacher override for edge cases: force a student's state. Closes any
+        open interval for (session, student) then opens a fresh one in the given
+        state — the same shape the capture recorder writes, so the roster derives
+        it identically. Raises on failure so the endpoint can report it."""
+        got = self._client.get(
+            "/students",
+            params={"reg_no": f"eq.{reg_no}", "select": "id", "limit": "1"},
+        )
+        got.raise_for_status()
+        rows = got.json()
+        if not rows:
+            raise ValueError(f"no student with reg_no {reg_no}")
+        student_id = rows[0]["id"]
+        # Close whatever is currently open for this student in this session.
+        self._client.patch(
+            "/presence_intervals",
+            params={
+                "session_id": f"eq.{session_id}",
+                "student_id": f"eq.{student_id}",
+                "ended_at": "is.null",
+            },
+            json={"ended_at": _iso(at)},
+        ).raise_for_status()
+        # Open the new, manually-set interval.
+        self._client.post(
+            "/presence_intervals",
+            json=PresenceInterval(
+                session_id=session_id, student_id=student_id, state=state, started_at=at
+            ).open_payload(),
+        ).raise_for_status()
 
     def _ensure_default_device(self) -> str:
         """class_sessions.device_id is NOT NULL but browser capture has no

@@ -30,6 +30,15 @@ const TYPE_LABELS: Record<string, string> = {
   head_pose: "Suspicious gaze",
 };
 
+// Priority by event type (the DB stores no model confidence — this is an honest
+// type-based severity, not a fabricated score).
+const SEVERITY: Record<string, { label: string; cls: string }> = {
+  phone: { label: "High", cls: "border-[color:var(--bad)]/40 bg-[color:var(--bad)]/10 text-[color:var(--bad)]" },
+  extra_person: { label: "Medium", cls: "border-[color:var(--warn)]/40 bg-[color:var(--warn)]/10 text-[color:var(--warn)]" },
+  head_pose: { label: "Low", cls: "border-[color:var(--muted)]/40 bg-[color:var(--surface-2)] text-[color:var(--muted)]" },
+};
+const severityOf = (t: string) => SEVERITY[t] ?? SEVERITY.head_pose;
+
 function ProctorPage() {
   const [flags, setFlags] = useState<Flag[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -57,8 +66,11 @@ function ProctorPage() {
         <h2 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-[color:var(--ink)]">
           Proctor review queue
         </h2>
-        <p className="mt-1 text-sm text-[color:var(--muted)]">
-          Every flag requires human review. The system flags — you decide. Dismissed flags are logged for audit.
+        <p className="mt-1 max-w-2xl text-sm text-[color:var(--muted)]">
+          Exam-mode capture raises <span className="text-[color:var(--ink)]">candidate</span> events
+          (a phone or an extra person in frame) — never verdicts. This queue is where a human
+          confirms or dismisses each one: the system assists, it never auto-penalises. Every decision
+          is logged for audit, and no image is ever stored.
         </p>
       </header>
 
@@ -97,14 +109,8 @@ function ProctorPage() {
                     <span>{TYPE_LABELS[f.type]}</span>
                   </div>
                   <div className="mt-1.5">
-                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-[0.16em] ${
-                      f.confidence >= 0.8
-                        ? "border-[color:var(--bad)]/40 bg-[color:var(--bad)]/10 text-[color:var(--bad)]"
-                        : f.confidence >= 0.6
-                          ? "border-[color:var(--warn)]/40 bg-[color:var(--warn)]/10 text-[color:var(--warn)]"
-                          : "border-[color:var(--muted)]/40 bg-[color:var(--surface-2)] text-[color:var(--muted)]"
-                    }`}>
-                      {Math.round(f.confidence * 100)}% conf
+                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-[0.16em] ${severityOf(f.type).cls}`}>
+                      {severityOf(f.type).label} priority
                     </span>
                   </div>
                 </motion.button>
@@ -135,20 +141,20 @@ function ProctorPage() {
                     Flagged for {current.student} at {current.ts}
                   </p>
                 </div>
-                <span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono-nums text-[10px] uppercase tracking-[0.16em] ${
-                  current.confidence >= 0.8
-                    ? "border-[color:var(--bad)]/40 bg-[color:var(--bad)]/10 text-[color:var(--bad)]"
-                    : "border-[color:var(--warn)]/40 bg-[color:var(--warn)]/10 text-[color:var(--warn)]"
-                }`}>
-                  {Math.round(current.confidence * 100)}% confidence
+                <span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono-nums text-[10px] uppercase tracking-[0.16em] ${severityOf(current.type).cls}`}>
+                  {severityOf(current.type).label} priority
                 </span>
               </div>
 
-              {/* Mock frame placeholder */}
-              <div className="mt-6 grid place-items-center rounded-xl border border-dashed border-[color:var(--line)]/70 bg-[color:var(--surface)]/50 py-20">
-                <AlertTriangle className="h-8 w-8 text-[color:var(--warn)]" />
-                <p className="mt-2 font-mono-nums text-[11px] text-[color:var(--muted)]">
-                  Frame clip would render here from inference server
+              {/* No frame is stored — privacy invariant (frames processed in
+                  memory, never persisted). The flag records what and when, not a
+                  saved image. */}
+              <div className="mt-6 grid place-items-center rounded-xl border border-dashed border-[color:var(--line)]/70 bg-[color:var(--surface)]/50 py-14 px-6 text-center">
+                <AlertTriangle className="h-7 w-7 text-[color:var(--muted)]" />
+                <p className="mt-3 max-w-sm font-mono-nums text-[11px] leading-relaxed text-[color:var(--muted)]">
+                  No image is stored for this flag. Frames are processed in memory and never
+                  persisted — the record is the event (type, student, time), reviewed live by the
+                  invigilator at the moment it happened.
                 </p>
               </div>
 

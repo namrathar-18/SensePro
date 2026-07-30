@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Download, Filter, Phone, Users2, Eye, WifiOff } from "lucide-react";
+import { Download, WifiOff, ChevronDown, QrCode } from "lucide-react";
 import { KpiCard } from "@/components/sp/KpiCard";
 import { StateChip } from "@/components/sp/StateChip";
+import { overridePresence, type OverrideState } from "@/lib/data/attendance";
 import {
   deriveRoster,
   fetchActiveSession,
@@ -49,13 +50,6 @@ export const Route = createFileRoute("/_shell/teacher")({
   component: TeacherPage,
 });
 
-const STATE_ORDER: AttendanceState[] = ["PRESENT", "UNVERIFIED", "ABSENT"];
-
-function nextState(s: AttendanceState): AttendanceState {
-  // Bias flow: PRESENT→UNVERIFIED→ABSENT→PRESENT (recovery)
-  return STATE_ORDER[(STATE_ORDER.indexOf(s) + 1) % STATE_ORDER.length];
-}
-
 function formatRelative(iso: string | null, nowMs: number): string {
   if (!iso) return "—";
   const diff = Math.max(0, Math.floor((nowMs - new Date(iso).getTime()) / 1000));
@@ -65,6 +59,65 @@ function formatRelative(iso: string | null, nowMs: number): string {
   if (m < 60) return `${m}m ${diff % 60}s ago`;
   const h = Math.floor(m / 60);
   return `${h}h ${m % 60}m ago`;
+}
+
+/** Editable attendance state: shows the chip, opens a small menu to force a
+ *  state (edge cases) or issue a QR check-in when QR mode is on. */
+function StateOverride({
+  state,
+  qrOn,
+  onSet,
+  onIssueQr,
+}: {
+  state: AttendanceState;
+  qrOn: boolean;
+  onSet: (s: OverrideState) => void;
+  onIssueQr: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="sp-focus flex items-center gap-1 rounded-md px-1 py-0.5 transition-colors hover:bg-[color:var(--surface-2)]"
+        aria-label="Change attendance state"
+      >
+        <StateChip state={state} />
+        <ChevronDown className="h-3 w-3 text-[color:var(--muted)]" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 z-20 mt-1 w-44 overflow-hidden rounded-md border border-[color:var(--line)] bg-[color:var(--surface)] shadow-lg">
+            {(["PRESENT", "UNVERIFIED", "ABSENT"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => {
+                  onSet(s);
+                  setOpen(false);
+                }}
+                disabled={s === state}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left font-mono-nums text-[11px] uppercase tracking-wider text-[color:var(--ink)] transition-colors hover:bg-[color:var(--surface-2)] disabled:opacity-40"
+              >
+                <StateChip state={s} /> {s === state && "· current"}
+              </button>
+            ))}
+            {qrOn && (
+              <button
+                onClick={() => {
+                  onIssueQr();
+                  setOpen(false);
+                }}
+                className="flex w-full items-center gap-2 border-t border-[color:var(--line)] px-3 py-2 text-left font-mono-nums text-[11px] uppercase tracking-wider text-[color:var(--primary)] transition-colors hover:bg-[color:var(--surface-2)]"
+              >
+                <QrCode className="h-3.5 w-3.5" /> Issue QR check-in
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 function TeacherPage() {
@@ -169,22 +222,49 @@ function TeacherPage() {
   const filterCount = (k: "ALL" | AttendanceState) =>
     k === "ALL" ? total : counts[k];
 
-  // Admin-toggled QR check-in for students the camera couldn't verify.
+  // Admin-toggled QR check-in for students the camera couldn't verify. The
+  // panel serves both the FSM's UNVERIFIED students and anyone the teacher
+  // explicitly issues a QR to (e.g. an ABSENT student who is actually present).
   const [qrOn] = useQrEnabled();
+  const [qrPending, setQrPending] = useState<Set<string>>(new Set());
   const unverified = useMemo(
     () =>
       roster
-        .filter((r) => r.state === "UNVERIFIED")
-        .map((r) => ({
-          student_id: r.student_id,
-          full_name: (r as unknown as { full_name?: string }).full_name ?? r.student_id,
-        })),
-    [roster],
+        .filter((r) => r.state === "UNVERIFIED" || qrPending.has(r.student_id))
+        .map((r) => ({ student_id: r.student_id, full_name: r.full_name })),
+    [roster, qrPending],
   );
   const resolveQr = useCallback((id: string, state: AttendanceState) => {
     setRoster((prev) =>
       prev.map((r) => (r.student_id === id ? ({ ...r, state } as RosterEntry) : r)),
     );
+    setQrPending((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  // Manual teacher override for edge cases. Optimistic locally; persisted to the
+  // live session via the backend when one is running (Realtime then confirms).
+  const setState = useCallback(
+    (regNo: string, state: OverrideState) => {
+      setRoster((prev) =>
+        prev.map((r) => (r.student_id === regNo ? ({ ...r, state } as RosterEntry) : r)),
+      );
+      if (session) {
+        overridePresence(session.id, regNo, state)
+          .then(() => toast.success(`${regNo} set ${state.toLowerCase()}`))
+          .catch(() => toast.error("Could not save the change to the session"));
+      } else {
+        toast.message(`${regNo} set ${state.toLowerCase()} (no live session — local only)`);
+      }
+    },
+    [session],
+  );
+
+  const issueQr = useCallback((regNo: string) => {
+    setQrPending((prev) => new Set(prev).add(regNo));
   }, []);
 
   return (
@@ -257,9 +337,6 @@ function TeacherPage() {
                   </button>
                 ))}
               </div>
-              <button className="sp-focus flex h-12 items-center gap-2 rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)] px-4 text-xs text-[color:var(--muted)] transition-colors hover:text-[color:var(--ink)]">
-                <Filter className="h-3.5 w-3.5" /> Advanced
-              </button>
               <button
                 onClick={() =>
                   exportSessionPdf({
@@ -278,7 +355,7 @@ function TeacherPage() {
             <table className="w-full border-collapse">
               <thead className="sticky top-0 bg-[color:var(--surface)] backdrop-blur">
                 <tr className="border-b border-[color:var(--line)]">
-                  {["", "Reg no", "Name", "State", "Last seen"].map((h) => (
+                  {["", "Reg no", "Name", "State (click to edit)", "Last seen"].map((h) => (
                     <th
                       key={h}
                       className="px-4 py-2 text-left font-mono-nums text-[10px] uppercase tracking-[0.16em] text-[color:var(--muted)]"
@@ -307,7 +384,14 @@ function TeacherPage() {
                       </td>
                       <td className="px-4 py-3 font-mono-nums text-xs text-[color:var(--muted)]">{r.student_id}</td>
                       <td className="px-4 py-3 text-[15px] text-[color:var(--ink)]">{r.full_name}</td>
-                      <td className="px-4 py-3"><StateChip state={r.state} /></td>
+                      <td className="px-4 py-3">
+                        <StateOverride
+                          state={r.state}
+                          qrOn={qrOn}
+                          onSet={(s) => setState(r.student_id, s)}
+                          onIssueQr={() => issueQr(r.student_id)}
+                        />
+                      </td>
                       <td className="px-4 py-3 font-mono-nums text-xs text-[color:var(--muted)]" title={r.last_seen ?? undefined}>
                         {formatRelative(r.last_seen, now)}
                       </td>

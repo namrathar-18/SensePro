@@ -35,6 +35,14 @@ class SessionOut(BaseModel):
     ends_at: str | None = None
 
 
+class PresenceOverride(BaseModel):
+    reg_no: str
+    state: str  # PRESENT | UNVERIFIED | ABSENT
+
+
+_VALID_STATES = {"PRESENT", "UNVERIFIED", "ABSENT"}
+
+
 @router.post("", status_code=201, response_model=SessionOut)
 def create_session(body: SessionCreate) -> SessionOut:
     writer = build_writer()
@@ -49,6 +57,21 @@ def create_session(body: SessionCreate) -> SessionOut:
         mode=body.mode,
         starts_at=starts_at.isoformat(),
     )
+
+
+@router.post("/{session_id}/presence", response_model=dict)
+def override_presence(session_id: str, body: PresenceOverride) -> dict:
+    """Manual teacher override of a student's attendance state (edge cases:
+    a mis-recognition, a student the camera never caught, etc.). Writes a
+    presence interval in the chosen state via the service-role writer."""
+    if body.state not in _VALID_STATES:
+        raise HTTPException(status_code=400, detail=f"state must be one of {_VALID_STATES}")
+    writer = build_writer()
+    try:
+        writer.set_manual_presence(session_id, body.reg_no, body.state, datetime.now(UTC))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"presence override failed: {exc}") from exc
+    return {"ok": True, "reg_no": body.reg_no, "state": body.state}
 
 
 @router.post("/{session_id}/end", response_model=dict)
