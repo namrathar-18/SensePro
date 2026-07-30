@@ -51,12 +51,44 @@ FrameObserver = Callable[[np.ndarray, float], None]
 class ProctorView:
     """The latest exam-mode detections + flags raised on the current frame,
     mutated in place each processed frame. The WS path reads this after the
-    observers run so the capture overlay can *show* the phone / extra person —
-    otherwise proctoring is invisible until a teacher opens the review queue.
-    Empty in lecture mode (no object detector runs)."""
+    observers run so the capture overlay can *show* the phone / extra person
+    (and WHO it belongs to) — otherwise proctoring is invisible until a teacher
+    opens the review queue. Empty in lecture mode (no object detector runs).
 
-    detections: list[ObjectDetection] = field(default_factory=list)
-    new_flags: list[str] = field(default_factory=list)
+    detections: [{"label","box","confidence","student_id"}] — student_id is the
+    reg_no of the nearest recognised face for a phone (the likely owner), else
+    None. new_flags: [{"flag_type","student_id"}] as actually written this frame.
+    Names are resolved downstream (ws_result) where the roster map lives."""
+
+    detections: list[dict] = field(default_factory=list)
+    new_flags: list[dict] = field(default_factory=list)
+    # Class-level engagement summary for THIS frame (aggregate, no identity):
+    # {"visible","attending","head_down","vnei","k_min","suppressed"}. Suppressed
+    # (blank on the UI) below the k-anonymity floor, exactly like the stored
+    # zone aggregates — so a solo test only shows it when k_min is lowered.
+    engagement: dict = field(default_factory=dict)
+
+
+def _nearest_identified_track(det: ObjectDetection, tracks) -> object | None:
+    """Nearest track that HAS an identity, by box-centre distance — used to name
+    the likely phone owner on the live overlay. Unlike the engine's flag
+    attribution (which caps distance to avoid false blame in a crowd), this has
+    no cap: in a single-webcam room the nearest recognised face is the owner."""
+    dx, dy = _centre(det.box)
+    best = None
+    for tr in tracks:
+        if not tr.student_id:
+            continue
+        tx, ty = _centre(tr.det.box)
+        dist = ((dx - tx) ** 2 + (dy - ty) ** 2) ** 0.5
+        if best is None or dist < best[0]:
+            best = (dist, tr)
+    return best[1] if best else None
+
+
+def _centre(box: tuple[int, int, int, int]) -> tuple[float, float]:
+    x1, y1, x2, y2 = box
+    return (x1 + x2) / 2.0, (y1 + y2) / 2.0
 
 
 class FrameSource(Protocol):
@@ -139,13 +171,16 @@ def build_observers(
     session_id: str,
     session_start: datetime,
     enrolled_by_zone: dict[str, int],
+    student_id_map: dict[str, str] | None = None,
 ) -> tuple[list[FrameObserver], ZoneAggregator, ProctorView]:
     """Exam mode adds the proctor engine; engagement aggregates in both modes.
     One detector pass per sampled frame serves both consumers — in lecture
     mode there is no object detector, so phone signals are simply absent.
 
     Returns a ProctorView too: the caller can read the current frame's phone /
-    person detections (to draw them live) without re-running the detector."""
+    person detections (to draw them live) without re-running the detector.
+    student_id_map (reg_no->UUID) lets the proctor write flags against the real
+    students FK — without it, attributed flags are rejected by the DB."""
     engine = None
     if mode == "exam":
         engine = ProctorEngine(
@@ -158,6 +193,7 @@ def build_observers(
             session_id=session_id,
             session_start=session_start,
             cooldown_s=settings.proctor_cooldown_s,
+            student_id_map=student_id_map or {},
         )
     extractor = SignalExtractor()
     aggregator = ZoneAggregator(
@@ -180,11 +216,38 @@ def build_observers(
             dets = engine.detector.detect(frame)
             flags = engine.observe(frame, tracks, rel_ts, detections=dets)
             phone_dets = [d for d in dets if d.label == "cell phone"]
-            # Surface this frame's detections + any flag types raised, so the
-            # capture overlay can render them (see app/ws.py::_process).
-            view.detections = dets
-            view.new_flags = [f.flag_type for f in flags]
+            # Surface this frame's detections + flags raised, WITH the likely
+            # owner (nearest recognised face) for phones, so the overlay can name
+            # who is using it (see app/ws.py::_process, ws_result names it).
+            det_dicts = []
+            for d in dets:
+                owner = _nearest_identified_track(d, tracks) if d.label == "cell phone" else None
+                det_dicts.append(
+                    {
+                        "label": d.label,
+                        "box": list(d.box),
+                        "confidence": round(d.confidence, 2),
+                        "student_id": owner.student_id if owner else None,
+                    }
+                )
+            view.detections = det_dicts
+            view.new_flags = [{"flag_type": f.flag_type, "student_id": f.student_id} for f in flags]
         signals = extractor.extract(tracks, phone_dets, frame.shape[:2])
+        # Live class-level engagement (aggregate only). head_down (pitch past the
+        # attention band) is the disengagement / "sleeping" proxy; a track only
+        # counts as "visible" once the backend can read its head pose.
+        vals = [signals[t.track_id] for t in tracks]
+        visible = [s for s in vals if s.head_down is not None]
+        n_vis = len(visible)
+        n_down = sum(1 for s in visible if s.head_down)
+        view.engagement = {
+            "visible": n_vis,
+            "attending": n_vis - n_down,
+            "head_down": n_down,
+            "vnei": round((n_vis - n_down) / n_vis, 2) if n_vis else None,
+            "k_min": settings.engagement_k_min,
+            "suppressed": n_vis < settings.engagement_k_min,
+        }
         aggregator.observe([(t, signals[t.track_id]) for t in tracks], frame.shape[0], rel_ts)
 
     return [frame_observer], aggregator, view

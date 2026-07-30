@@ -42,6 +42,11 @@ class ProctorEngine:
     session_id: str
     session_start: datetime
     cooldown_s: float = 30.0
+    # reg_no -> students.id (UUID). Tracks identify students by register number,
+    # but proctor_flags.student_id is the UUID FK — without this map every
+    # attributed flag is rejected by the DB and dropped. Empty = write ids as-is
+    # (offline/stub loop, which persists nothing anyway).
+    student_id_map: dict[str, str] = field(default_factory=dict)
     _last_flag: dict[tuple[str, int | None], float] = field(default_factory=dict)
 
     def observe(
@@ -88,11 +93,19 @@ class ProctorEngine:
         if last is not None and (rel_ts - last) < self.cooldown_s:
             return None
         self._last_flag[key] = rel_ts
+        # Translate the track's reg_no to the students.id UUID for the FK. If a
+        # map is present but the reg_no isn't in it, record the event unattributed
+        # (student_id=None) rather than letting the DB reject the whole flag.
+        reg_no = track.student_id if track else None
+        if reg_no is not None and self.student_id_map:
+            db_id = self.student_id_map.get(reg_no)
+        else:
+            db_id = reg_no
         row = ProctorFlagRow(
             session_id=self.session_id,
             flag_type=flag_type,
             flagged_at=self.session_start + timedelta(seconds=rel_ts),
-            student_id=track.student_id if track else None,
+            student_id=db_id,
         )
         self.writer.create_flag(row)
         return row

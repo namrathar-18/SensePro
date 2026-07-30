@@ -65,12 +65,27 @@ class WsEnricher:
                 }
             )
 
+        # Name the likely phone owner / flagged student so the overlay can say
+        # WHO — the pipeline only knows reg_nos; names live in the roster map.
+        raw_proctor = result.get("proctor", {"detections": [], "flags": []})
+        proctor = {
+            "detections": [
+                {**d, "student_name": self._name(d["student_id"]) if d.get("student_id") else None}
+                for d in raw_proctor.get("detections", [])
+            ],
+            "flags": [
+                {**f, "student_name": self._name(f["student_id"]) if f.get("student_id") else None}
+                for f in raw_proctor.get("flags", [])
+            ],
+        }
+
         return {
             "type": "result",
             "ts": ts,
             "faces": result.get("faces", []),
             "present": present,
             "transitions": transitions,
-            "proctor": result.get("proctor", {"detections": [], "flags": []}),
+            "proctor": proctor,
+            "engagement": result.get("engagement", {}),
             "sent_size": {"w": frame_w, "h": frame_h},
         }

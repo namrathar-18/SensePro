@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Camera, Maximize2, Minimize2, Play, Settings2, X, ShieldAlert, Save, CheckCircle2,
+  Camera, Maximize2, Minimize2, Play, Settings2, X, ShieldAlert, Save, CheckCircle2, Activity,
 } from "lucide-react";
 import { ConnectionBadge, type ConnState } from "@/components/sp/ConnectionBadge";
 import { cn } from "@/lib/utils";
@@ -39,10 +39,25 @@ interface WsProctorDet {
   label: string; // "cell phone" | "person"
   box: [number, number, number, number];
   confidence: number;
+  student_id?: string | null; // reg_no of the likely owner (nearest face)
+  student_name?: string | null;
+}
+interface WsProctorFlag {
+  flag_type: string; // "phone" | "extra_person"
+  student_id?: string | null;
+  student_name?: string | null;
 }
 interface WsProctor {
   detections: WsProctorDet[];
-  flags: string[]; // flag types raised this frame: "phone" | "extra_person"
+  flags: WsProctorFlag[]; // flags raised this frame, with attributed student
+}
+interface WsEngagement {
+  visible: number; // tracks whose head pose could be read
+  attending: number;
+  head_down: number; // disengagement / "sleeping" proxy
+  vnei: number | null; // attending / visible, 0..1 (class-level)
+  k_min: number;
+  suppressed: boolean; // below the k-anonymity floor → hidden
 }
 interface WsResult {
   type: "result";
@@ -51,11 +66,13 @@ interface WsResult {
   present: WsPresentRow[];
   transitions: WsTransition[];
   proctor?: WsProctor;
+  engagement?: WsEngagement;
   sent_size: { w: number; h: number };
 }
 interface ProctorAlert {
   id: string;
   type: string; // "phone" | "extra_person"
+  name: string | null; // attributed student, if known
   ts: number;
 }
 
@@ -114,10 +131,13 @@ function CapturePage() {
   // Exam-mode proctoring surfaced to the operator: a running log of raised
   // flags and whether a phone / extra person is on screen *right now*.
   const [proctorFlags, setProctorFlags] = useState<ProctorAlert[]>([]);
-  const [proctorLive, setProctorLive] = useState<{ phone: boolean; extra: boolean }>({
-    phone: false,
-    extra: false,
-  });
+  const [proctorLive, setProctorLive] = useState<{
+    phone: boolean;
+    extra: boolean;
+    phoneOwner: string | null;
+  }>({ phone: false, extra: false, phoneOwner: null });
+  // Live class-level engagement (aggregate; null until the server sends it).
+  const [engagement, setEngagement] = useState<WsEngagement | null>(null);
   const [elapsed, setElapsed] = useState(0);
   // Set when a session is saved & ended — drives the confirmation overlay.
   const [savedSummary, setSavedSummary] = useState<{ present: number; total: number } | null>(null);
@@ -219,7 +239,10 @@ function CapturePage() {
           ctx.lineWidth = 3;
           ctx.strokeStyle = `rgba(244,63,94,${pulse.toFixed(3)})`;
           ctx.strokeRect(rx, ry, rw, rh);
-          const label = `PHONE ${(d.confidence * 100).toFixed(0)}%`;
+          // Name the likely owner (nearest recognised face) when known.
+          const label = d.student_name
+            ? `PHONE ${(d.confidence * 100).toFixed(0)}% · ${d.student_name}`
+            : `PHONE ${(d.confidence * 100).toFixed(0)}%`;
           const tw = ctx.measureText(label).width + 12;
           ctx.fillStyle = "rgba(244,63,94,0.94)";
           ctx.fillRect(rx, Math.max(0, ry - 20), tw, 20);
@@ -383,20 +406,39 @@ function CapturePage() {
         }
 
         // Proctor (exam mode): stash detections for the overlay, reflect live
-        // phone/extra-person state, and log any flag the engine actually raised.
+        // phone/extra-person state (and WHO holds the phone), and log any flag
+        // the engine actually raised — with the attributed student.
         const proctor = msg.proctor;
         if (proctor) {
-          proctorRef.current = { dets: proctor.detections ?? [], atMs: now };
-          const phoneLive = (proctor.detections ?? []).some((d) => d.label === "cell phone");
-          const extraLive = (proctor.detections ?? []).filter((d) => d.label === "person").length > msg.faces.length;
-          setProctorLive({ phone: phoneLive, extra: extraLive });
-          for (const ft of proctor.flags ?? []) {
+          const dets = proctor.detections ?? [];
+          proctorRef.current = { dets, atMs: now };
+          const phoneDet = dets.find((d) => d.label === "cell phone");
+          const phoneLive = !!phoneDet;
+          const extraLive = dets.filter((d) => d.label === "person").length > msg.faces.length;
+          setProctorLive({
+            phone: phoneLive,
+            extra: extraLive,
+            phoneOwner: phoneDet?.student_name ?? null,
+          });
+          for (const f of proctor.flags ?? []) {
+            // Name comes from the detection attribution (reg_no→name); the flag
+            // row itself carries the DB UUID, not a nameable reg_no.
+            const name = f.flag_type === "phone" ? (phoneDet?.student_name ?? null) : null;
             setProctorFlags((prev) => [
-              { id: crypto.randomUUID(), type: ft, ts: Date.now() / 1000 },
+              { id: crypto.randomUUID(), type: f.flag_type, name, ts: Date.now() / 1000 },
               ...prev.slice(0, 49),
             ]);
-            pushToast(ft === "phone" ? "Phone flagged for review" : "Extra person flagged", "leave");
+            const who = name ? ` · ${name}` : "";
+            pushToast(
+              f.flag_type === "phone" ? `Phone flagged${who}` : `Extra person flagged${who}`,
+              "leave",
+            );
           }
+        }
+
+        // Class-level engagement (aggregate; head_down = sleeping/disengagement).
+        if (msg.engagement && typeof msg.engagement.visible === "number") {
+          setEngagement(msg.engagement);
         }
       } catch {}
     },
@@ -476,7 +518,8 @@ function CapturePage() {
       setPresent([]);
       presentRef.current = [];
       setProctorFlags([]);
-      setProctorLive({ phone: false, extra: false });
+      setProctorLive({ phone: false, extra: false, phoneOwner: null });
+      setEngagement(null);
       proctorRef.current = { dets: [], atMs: 0 };
       setSavedSummary(null);
       stoppingRef.current = false;
@@ -773,7 +816,11 @@ function CapturePage() {
                 >
                   <ShieldAlert className="h-5 w-5 text-white" />
                   <span className="font-mono-nums text-sm font-bold uppercase tracking-[0.14em] text-white">
-                    {proctorLive.phone ? "Phone detected in frame" : "Extra person in frame"}
+                    {proctorLive.phone
+                      ? proctorLive.phoneOwner
+                        ? `Phone · ${proctorLive.phoneOwner}`
+                        : "Phone detected in frame"
+                      : "Extra person in frame"}
                   </span>
                 </div>
               </motion.div>
@@ -911,6 +958,56 @@ function CapturePage() {
             )}
           </div>
 
+          {/* Class engagement panel (all modes): aggregate attention + the
+              head-down / "sleeping" count. Hidden below the k-anonymity floor. */}
+          {engagement && (
+            <div className="border-t border-[color:var(--line)] px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  <Activity className="h-3.5 w-3.5" /> Class engagement
+                </div>
+                {!engagement.suppressed && (
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-[0.14em]",
+                      engagement.head_down > 0
+                        ? "bg-[color:var(--warn)]/15 text-[color:var(--warn)]"
+                        : "bg-[color:var(--ok)]/15 text-[color:var(--ok)]",
+                    )}
+                  >
+                    {engagement.head_down > 0 ? "head-down" : "attentive"}
+                  </span>
+                )}
+              </div>
+              {engagement.suppressed ? (
+                <div className="mt-2 font-mono-nums text-[11px] leading-relaxed text-[color:var(--muted)]">
+                  Hidden — engagement is class-aggregate only and needs ≥{" "}
+                  {engagement.k_min} visible {engagement.k_min === 1 ? "face" : "faces"} (privacy floor).
+                </div>
+              ) : (
+                <>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <div className="font-display text-2xl font-extrabold text-[color:var(--ink)]">
+                      {engagement.vnei == null ? "—" : `${Math.round(engagement.vnei * 100)}%`}
+                    </div>
+                    <div className="font-mono-nums text-[11px] text-[color:var(--muted)]">
+                      attention (class)
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-4 font-mono-nums text-[11px]">
+                    <span className="text-[color:var(--ok)]">
+                      {engagement.attending} attending
+                    </span>
+                    <span className={engagement.head_down > 0 ? "text-[color:var(--warn)]" : "text-[color:var(--muted)]"}>
+                      {engagement.head_down} head-down
+                    </span>
+                    <span className="text-[color:var(--muted)]">{engagement.visible} visible</span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Proctor panel (exam mode only): live status + flags raised for the
               review queue this session. */}
           {sessionInfo.mode === "exam" && (
@@ -947,6 +1044,7 @@ function CapturePage() {
                     >
                       <span className="text-[color:var(--ink)]">
                         {f.type === "phone" ? "Phone" : "Extra person"}
+                        {f.name ? <span className="text-[color:var(--muted)]"> · {f.name}</span> : null}
                       </span>
                       <span>{tsAgo(f.ts)}</span>
                     </li>

@@ -120,11 +120,12 @@ async def capture(ws: WebSocket) -> None:
         if not session_id or recorder is not None:
             return
         writer = build_writer()
+        id_map = _load_student_id_map()  # reg_no -> UUID, shared by presence + proctor
         recorder = SessionRecorder(
             writer=writer,
             session_id=session_id,
             session_start=session_start,
-            student_id_map=_load_student_id_map(),
+            student_id_map=id_map,
         )
         observers, aggregator, proctor_view = build_observers(
             mode=mode,
@@ -133,6 +134,7 @@ async def capture(ws: WebSocket) -> None:
             session_id=session_id,
             session_start=session_start,
             enrolled_by_zone=_even_zone_split(len(store.roster)),
+            student_id_map=id_map,
         )
 
     _attach(ws.query_params.get("session_id"))
@@ -152,12 +154,10 @@ async def capture(ws: WebSocket) -> None:
         # we only read what they found. Empty outside exam mode.
         if proctor_view is not None:
             result["proctor"] = {
-                "detections": [
-                    {"label": d.label, "box": list(d.box), "confidence": round(d.confidence, 2)}
-                    for d in proctor_view.detections
-                ],
+                "detections": proctor_view.detections,
                 "flags": proctor_view.new_flags,
             }
+            result["engagement"] = proctor_view.engagement
         return result
 
     try:
