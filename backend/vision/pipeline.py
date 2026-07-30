@@ -6,8 +6,6 @@ interval) -> drive the presence FSM. One instance per active class session.
 
 from __future__ import annotations
 
-import os
-
 import numpy as np
 
 from presence.fsm import PresenceFSM
@@ -22,9 +20,15 @@ _INSIGHTFACE_SINGLETON = None
 
 
 def build_backend():
-    """Factory selected by VISION_BACKEND (stub | insightface). The insightface
-    backend is a process-wide singleton so the model loads only once."""
-    backend = os.getenv("VISION_BACKEND", "stub").lower()
+    """Factory selected by settings.vision_backend (stub | insightface). Reads
+    the SAME config source as the rest of the app — VISION_BACKEND from the
+    environment OR the backend/.env file. (Previously this used os.getenv
+    directly, so a plain `.env` launch silently fell back to the stub while
+    /health still reported insightface.) The insightface backend is a
+    process-wide singleton so the model loads only once."""
+    from app.config import settings
+
+    backend = settings.vision_backend.lower()
     if backend == "insightface":
         global _INSIGHTFACE_SINGLETON
         if _INSIGHTFACE_SINGLETON is None:

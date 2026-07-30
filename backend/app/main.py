@@ -47,8 +47,14 @@ app.include_router(sessions_router)
 
 @app.get("/health")
 def health() -> dict:
+    # Report the ACTUAL loaded backend, not just the configured name — so a
+    # silent fallback to the stub is visible here instead of looking healthy.
+    from vision.pipeline import build_backend
+
+    detector, _ = build_backend()
     return {
         "status": "ok",
         "service": "sensepro-backend",
         "vision_backend": settings.vision_backend,
+        "vision_backend_active": type(detector).__name__,
     }
