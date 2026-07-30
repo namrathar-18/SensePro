@@ -3,6 +3,10 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     vision_backend: str = "stub"
+    # SCRFD detector input size. Larger = small/distant faces in a crowded frame
+    # are detected (more students at once), at more CPU per frame. 640 is the
+    # buffalo_l default; raise to 960/1024 for a dense classroom.
+    vision_det_size: int = 800
     reid_interval_s: float = 30.0
     miss_threshold: int = 3
     # Roll-call latch (single laptop webcam panning a room): once recognised,
@@ -41,6 +45,11 @@ class Settings(BaseSettings):
     gaze_window_s: float = 10.0
     gaze_pitch_down_deg: float = -25.0
     proctor_cooldown_s: float = 30.0
+    # Extra-person flag must hold for this many consecutive sampled frames before
+    # firing — YOLO tracks bodies (which persist through camera motion) while
+    # face detection drops out during the blur, so a raw count mismatch flickers
+    # a false "extra person" whenever the frame moves. Sustained = real.
+    proctor_extra_person_min_frames: int = 3
     # YOLO confidence floor for proctor objects. 0.30 (not the library's 0.35)
     # so a hand-held phone at webcam distance is still caught; the human review
     # queue absorbs the few extra low-confidence candidates.

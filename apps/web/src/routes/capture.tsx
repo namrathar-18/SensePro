@@ -104,6 +104,9 @@ function CapturePage() {
   // Live proctor detections for the overlay (exam mode). `atMs` lets the draw
   // loop fade the boxes out when the phone leaves frame.
   const proctorRef = useRef<{ dets: WsProctorDet[]; atMs: number }>({ dets: [], atMs: 0 });
+  // Debounce the "extra person" state: bodies (YOLO) outlast faces through
+  // camera motion, so require the mismatch to hold a few frames before showing.
+  const extraStreakRef = useRef(0);
   // Save-and-end flow: `stoppingRef` stops the socket auto-reconnecting after an
   // intentional end; `endAckRef` is the finalize callback fired when the server
   // acks the end (or on a timeout fallback).
@@ -114,7 +117,11 @@ function CapturePage() {
 
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [deviceId, setDeviceId] = useState<string>("");
-  const [sendWidth, setSendWidth] = useState(480);
+  // 720 (not 480): at low resolution several faces spread across the frame each
+  // become too small for the detector, so only the ~3 nearest are found. Higher
+  // = more students detected at once, at more bandwidth/CPU. Raise for a dense
+  // classroom (up to 1280 in settings); lower if the socket lags.
+  const [sendWidth, setSendWidth] = useState(720);
   // Exam mode also runs YOLO per frame on CPU (~1s/frame); sending 2fps piles
   // frames up and lags the socket, so default exam to 1fps. Lecture is
   // recognition-only and keeps up at 2fps. Adjustable in settings either way.
@@ -418,7 +425,9 @@ function CapturePage() {
           proctorRef.current = { dets, atMs: now };
           const phoneDet = dets.find((d) => d.label === "cell phone");
           const phoneLive = !!phoneDet;
-          const extraLive = dets.filter((d) => d.label === "person").length > msg.faces.length;
+          const extraNow = dets.filter((d) => d.label === "person").length > msg.faces.length;
+          extraStreakRef.current = extraNow ? extraStreakRef.current + 1 : 0;
+          const extraLive = extraStreakRef.current >= 3; // sustained, not a motion blip
           setProctorLive({
             phone: phoneLive,
             extra: extraLive,
@@ -489,7 +498,7 @@ function CapturePage() {
         if (canvas.width !== w) canvas.width = w;
         if (canvas.height !== h) canvas.height = h;
         ctx.drawImage(video, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
         const b64 = dataUrl.split(",")[1] ?? "";
         const ts = (Date.now() - startEpochRef.current) / 1000;
         try {
@@ -525,6 +534,7 @@ function CapturePage() {
       setProctorLive({ phone: false, extra: false, phoneOwner: null });
       setEngagement(null);
       proctorRef.current = { dets: [], atMs: 0 };
+      extraStreakRef.current = 0;
       setSavedSummary(null);
       stoppingRef.current = false;
       endAckRef.current = null;

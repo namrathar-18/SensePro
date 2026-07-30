@@ -79,12 +79,29 @@ def test_writing_posture_suppresses_phone_flag_until_window_expires() -> None:
     assert len(writer.flags) == 1
 
 
-def test_extra_person_flags_once() -> None:
+def test_extra_person_flags_after_sustained_frames() -> None:
     writer = FakeFlagWriter()
+    engine = _engine(writer)  # default: must hold 3 frames before flagging
     frame = _frame(((20, 20, 70, 70), GREEN), ((250, 20, 300, 70), GREEN))
-    flags = _engine(writer).observe(frame, [_track()], 1.0)
+    # 2 persons vs 1 tracked face — but a transient spike must NOT flag.
+    assert engine.observe(frame, [_track()], 1.0) == []
+    assert engine.observe(frame, [_track()], 1.2) == []
+    flags = engine.observe(frame, [_track()], 1.4)  # sustained -> flag
     assert [f.flag_type for f in flags] == ["extra_person"]
     assert flags[0].student_id is None  # never attributed to a student
+
+
+def test_extra_person_not_flagged_on_transient_spike() -> None:
+    """A face-detection dropout during camera motion (bodies momentarily exceed
+    faces) must not raise a flag — the streak resets when it resolves."""
+    writer = FakeFlagWriter()
+    engine = _engine(writer)
+    two = _frame(((20, 20, 70, 70), GREEN), ((250, 20, 300, 70), GREEN))
+    one = _frame(((20, 20, 70, 70), GREEN))
+    assert engine.observe(two, [_track()], 1.0) == []  # spike (streak 1)
+    assert engine.observe(one, [_track()], 1.2) == []  # resolved -> streak resets
+    assert engine.observe(two, [_track()], 1.4) == []  # spike again (streak 1)
+    assert writer.flags == []
 
 
 def test_cooldown_stops_per_frame_reflagging() -> None:
