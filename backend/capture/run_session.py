@@ -91,6 +91,23 @@ def _centre(box: tuple[int, int, int, int]) -> tuple[float, float]:
     return (x1 + x2) / 2.0, (y1 + y2) / 2.0
 
 
+def _attribute_dets(dets: list[ObjectDetection], tracks) -> list[dict]:
+    """Shape detections for the overlay, naming the likely owner (nearest
+    recognised face) of each phone so the UI can say who is holding it."""
+    out: list[dict] = []
+    for d in dets:
+        owner = _nearest_identified_track(d, tracks) if d.label == "cell phone" else None
+        out.append(
+            {
+                "label": d.label,
+                "box": list(d.box),
+                "confidence": round(d.confidence, 2),
+                "student_id": owner.student_id if owner else None,
+            }
+        )
+    return out
+
+
 class FrameSource(Protocol):
     def latest(self) -> tuple[np.ndarray, float] | None: ...
     def stop(self) -> None: ...
@@ -209,42 +226,53 @@ def build_observers(
 
     view = ProctorView()
 
+    # Lecture mode: run the phone detector too — but only as an engagement /
+    # DISTRACTION signal (a phone lowers attention), never a proctor flag.
+    # Throttled so it doesn't slow attendance panning; exam mode already detects
+    # every frame via the engine, so this is skipped there.
+    lecture_detector = None
+    if engine is None and settings.lecture_phone_signal:
+        lecture_detector = build_proctor_detector()
+    last_detect = {"ts": -1e9, "dets": []}
+
     def frame_observer(frame: np.ndarray, rel_ts: float) -> None:
         tracks = pipeline.last_tracks
         phone_dets: list[ObjectDetection] = []
         if engine is not None:
+            # Exam: detect every frame + raise proctor flags for the review queue.
             dets = engine.detector.detect(frame)
             flags = engine.observe(frame, tracks, rel_ts, detections=dets)
             phone_dets = [d for d in dets if d.label == "cell phone"]
-            # Surface this frame's detections + flags raised, WITH the likely
-            # owner (nearest recognised face) for phones, so the overlay can name
-            # who is using it (see app/ws.py::_process, ws_result names it).
-            det_dicts = []
-            for d in dets:
-                owner = _nearest_identified_track(d, tracks) if d.label == "cell phone" else None
-                det_dicts.append(
-                    {
-                        "label": d.label,
-                        "box": list(d.box),
-                        "confidence": round(d.confidence, 2),
-                        "student_id": owner.student_id if owner else None,
-                    }
-                )
-            view.detections = det_dicts
+            view.detections = _attribute_dets(dets, tracks)
             view.new_flags = [{"flag_type": f.flag_type, "student_id": f.student_id} for f in flags]
+        elif lecture_detector is not None:
+            # Lecture: throttled detect; reuse the last result between runs for a
+            # stable overlay + signal. No proctor flags — distraction only.
+            if rel_ts - last_detect["ts"] >= settings.lecture_phone_interval_s:
+                last_detect["dets"] = lecture_detector.detect(frame)
+                last_detect["ts"] = rel_ts
+            dets = last_detect["dets"]
+            phone_dets = [d for d in dets if d.label == "cell phone"]
+            view.detections = _attribute_dets(dets, tracks)
+            view.new_flags = []
+
         signals = extractor.extract(tracks, phone_dets, frame.shape[:2])
-        # Live class-level engagement (aggregate only). head_down (pitch past the
-        # attention band) is the disengagement / "sleeping" proxy; a track only
-        # counts as "visible" once the backend can read its head pose.
+        # Live class-level engagement (aggregate only). A track is attending when
+        # its head is up (pitch above the band) AND no phone is next to it;
+        # head_down is the "sleeping" proxy, phone the "distraction" proxy. A
+        # track only counts as "visible" once the backend can read its head pose.
         vals = [signals[t.track_id] for t in tracks]
         visible = [s for s in vals if s.head_down is not None]
         n_vis = len(visible)
         n_down = sum(1 for s in visible if s.head_down)
+        n_phone = sum(1 for s in visible if s.phone_nearby)
+        n_attend = sum(1 for s in visible if not s.head_down and not s.phone_nearby)
         view.engagement = {
             "visible": n_vis,
-            "attending": n_vis - n_down,
+            "attending": n_attend,
             "head_down": n_down,
-            "vnei": round((n_vis - n_down) / n_vis, 2) if n_vis else None,
+            "phone": n_phone,
+            "vnei": round(n_attend / n_vis, 2) if n_vis else None,
             "k_min": settings.engagement_k_min,
             "suppressed": n_vis < settings.engagement_k_min,
         }

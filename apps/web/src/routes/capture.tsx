@@ -55,6 +55,7 @@ interface WsEngagement {
   visible: number; // tracks whose head pose could be read
   attending: number;
   head_down: number; // disengagement / "sleeping" proxy
+  phone: number; // distraction proxy (phone next to a face)
   vnei: number | null; // attending / visible, 0..1 (class-level)
   k_min: number;
   suppressed: boolean; // below the k-anonymity floor → hidden
@@ -226,27 +227,30 @@ function CapturePage() {
       const sy = h / sentRef.current.h;
       const now = performance.now();
 
-      // --- Proctor overlay (exam mode): a detected phone gets a pulsing red
-      // box + confidence, drawn before faces so it shows even with no track. ---
+      // --- Phone overlay: a detected phone gets a pulsing box + confidence,
+      // drawn before faces so it shows even with no track. Red in exam mode
+      // (proctor flag), amber in lecture (distraction / engagement signal). ---
       const pv = proctorRef.current;
       if (pv.dets.length && now - pv.atMs < 1200) {
         const pulse = 0.55 + 0.45 * Math.abs(Math.sin(now / 190));
+        const isExam = sessionInfo.mode === "exam";
+        const col = isExam ? "244,63,94" : "251,191,36"; // red vs amber
         ctx.font = '700 12px "IBM Plex Mono", monospace';
         for (const d of pv.dets) {
           if (d.label !== "cell phone") continue; // person boxes would shadow the student's own body
           const [x0, y0, x1, y1] = d.box;
           const rx = x0 * sx, ry = y0 * sy, rw = (x1 - x0) * sx, rh = (y1 - y0) * sy;
           ctx.lineWidth = 3;
-          ctx.strokeStyle = `rgba(244,63,94,${pulse.toFixed(3)})`;
+          ctx.strokeStyle = `rgba(${col},${pulse.toFixed(3)})`;
           ctx.strokeRect(rx, ry, rw, rh);
           // Name the likely owner (nearest recognised face) when known.
-          const label = d.student_name
-            ? `PHONE ${(d.confidence * 100).toFixed(0)}% · ${d.student_name}`
-            : `PHONE ${(d.confidence * 100).toFixed(0)}%`;
+          const who = d.student_name ? ` · ${d.student_name}` : "";
+          const suffix = isExam ? "" : " · distraction";
+          const label = `PHONE ${(d.confidence * 100).toFixed(0)}%${who}${suffix}`;
           const tw = ctx.measureText(label).width + 12;
-          ctx.fillStyle = "rgba(244,63,94,0.94)";
+          ctx.fillStyle = `rgba(${col},0.94)`;
           ctx.fillRect(rx, Math.max(0, ry - 20), tw, 20);
-          ctx.fillStyle = "#fff";
+          ctx.fillStyle = isExam ? "#fff" : "#1a1205";
           ctx.fillText(label, rx + 6, Math.max(12, ry - 6));
         }
       }
@@ -800,10 +804,9 @@ function CapturePage() {
               </motion.div>
             )}
 
-            {/* Live proctor alert (exam mode): a phone or extra person on screen
-                right now. Distinct from the review queue — this is the operator
-                seeing it happen. */}
-            {sessionInfo.mode === "exam" && running && (proctorLive.phone || proctorLive.extra) && (
+            {/* Live phone/person alert. Exam = red proctor violation; lecture =
+                amber distraction (engagement) signal, not a review flag. */}
+            {running && (proctorLive.phone || (sessionInfo.mode === "exam" && proctorLive.extra)) && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -811,16 +814,25 @@ function CapturePage() {
                 className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center"
               >
                 <div
-                  className="flex items-center gap-3 rounded-md border border-[color:var(--bad)] bg-[color:var(--bad)]/90 px-5 py-3 shadow-lg"
+                  className={cn(
+                    "flex items-center gap-3 rounded-md border px-5 py-3 shadow-lg",
+                    sessionInfo.mode === "exam"
+                      ? "border-[color:var(--bad)] bg-[color:var(--bad)]/90 text-white"
+                      : "border-[color:var(--warn)] bg-[color:var(--warn)]/90 text-black",
+                  )}
                   style={{ animation: "sensepro-pulse 1.2s ease-in-out infinite" }}
                 >
-                  <ShieldAlert className="h-5 w-5 text-white" />
-                  <span className="font-mono-nums text-sm font-bold uppercase tracking-[0.14em] text-white">
-                    {proctorLive.phone
-                      ? proctorLive.phoneOwner
-                        ? `Phone · ${proctorLive.phoneOwner}`
-                        : "Phone detected in frame"
-                      : "Extra person in frame"}
+                  <ShieldAlert className="h-5 w-5" />
+                  <span className="font-mono-nums text-sm font-bold uppercase tracking-[0.14em]">
+                    {(() => {
+                      const who = proctorLive.phoneOwner ? ` · ${proctorLive.phoneOwner}` : "";
+                      if (proctorLive.phone) {
+                        return sessionInfo.mode === "exam"
+                          ? `Phone${who}`
+                          : `Phone${who} · distraction`;
+                      }
+                      return "Extra person in frame";
+                    })()}
                   </span>
                 </div>
               </motion.div>
@@ -970,12 +982,16 @@ function CapturePage() {
                   <span
                     className={cn(
                       "rounded-full px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-[0.14em]",
-                      engagement.head_down > 0
+                      engagement.head_down > 0 || engagement.phone > 0
                         ? "bg-[color:var(--warn)]/15 text-[color:var(--warn)]"
                         : "bg-[color:var(--ok)]/15 text-[color:var(--ok)]",
                     )}
                   >
-                    {engagement.head_down > 0 ? "head-down" : "attentive"}
+                    {engagement.head_down > 0
+                      ? "head-down"
+                      : engagement.phone > 0
+                        ? "distracted"
+                        : "attentive"}
                   </span>
                 )}
               </div>
@@ -994,12 +1010,15 @@ function CapturePage() {
                       attention (class)
                     </div>
                   </div>
-                  <div className="mt-2 flex items-center gap-4 font-mono-nums text-[11px]">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono-nums text-[11px]">
                     <span className="text-[color:var(--ok)]">
                       {engagement.attending} attending
                     </span>
                     <span className={engagement.head_down > 0 ? "text-[color:var(--warn)]" : "text-[color:var(--muted)]"}>
                       {engagement.head_down} head-down
+                    </span>
+                    <span className={engagement.phone > 0 ? "text-[color:var(--warn)]" : "text-[color:var(--muted)]"}>
+                      {engagement.phone} on phone
                     </span>
                     <span className="text-[color:var(--muted)]">{engagement.visible} visible</span>
                   </div>

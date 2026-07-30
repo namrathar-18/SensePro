@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     # so a hand-held phone at webcam distance is still caught; the human review
     # queue absorbs the few extra low-confidence candidates.
     proctor_conf: float = 0.30
+    # Lecture mode: also run the phone detector as an engagement/DISTRACTION
+    # signal (never a proctor flag) — a phone lowers class attention. Throttled
+    # so the attendance path stays responsive on CPU. Off = lecture is
+    # recognition-only (no phone signal).
+    lecture_phone_signal: bool = True
+    lecture_phone_interval_s: float = 2.0
 
     # VNEI engagement (Phase 3, backend/engagement). Zone bands are fractions
     # of frame height (camera at the front: lower in frame = nearer = front).
