@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { CheckCircle2, Circle, Fingerprint, Trash2 } from "lucide-react";
+import { CheckCircle2, Circle, Fingerprint, Trash2, UserPlus } from "lucide-react";
+import { toast } from "sonner";
+import { createStudent } from "@/lib/data/attendance";
 
 export const Route = createFileRoute("/_shell/enrollment")({
   head: () => ({
@@ -20,6 +22,119 @@ const STEPS = [
   { k: "Purge", d: "Video + raw frames deleted from disk immediately." },
   { k: "Verify", d: "Same-session match against enrolled embedding." },
 ];
+
+function AddStudentForm() {
+  const [regNo, setRegNo] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [section, setSection] = useState("4MCA-B");
+  const [zone, setZone] = useState("mid");
+  const [busy, setBusy] = useState(false);
+  const [added, setAdded] = useState<string[]>([]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!regNo.trim() || !fullName.trim()) {
+      toast.error("Register number and name are required");
+      return;
+    }
+    setBusy(true);
+    try {
+      await createStudent({
+        reg_no: regNo.trim(),
+        full_name: fullName.trim(),
+        class_section: section.trim() || "4MCA-B",
+        seat_zone: zone,
+      });
+      toast.success(`Added ${fullName.trim()} (${regNo.trim()})`);
+      setAdded((prev) => [`${regNo.trim()} · ${fullName.trim()}`, ...prev].slice(0, 8));
+      setRegNo("");
+      setFullName("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not add the student");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="glass-panel p-6">
+      <div className="flex items-center gap-2">
+        <UserPlus className="h-4 w-4 text-[color:var(--primary)]" />
+        <div className="font-display text-lg font-extrabold tracking-tight text-[color:var(--ink)]">
+          Add a student record
+        </div>
+      </div>
+      <p className="mt-1 text-sm text-[color:var(--muted)]">
+        Creates the roster identity in the database. Capture their face afterwards to enable
+        recognition.
+      </p>
+      <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
+        <Field label="Register number" className="lg:col-span-1">
+          <input
+            value={regNo}
+            onChange={(e) => setRegNo(e.target.value)}
+            placeholder="2547263"
+            className="sp-focus h-12 w-full rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)] px-3 font-mono-nums text-sm text-[color:var(--ink)] outline-none focus:border-[color:var(--primary)]"
+          />
+        </Field>
+        <Field label="Full name" className="lg:col-span-2">
+          <input
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Full name"
+            className="sp-focus h-12 w-full rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)] px-3 text-sm text-[color:var(--ink)] outline-none focus:border-[color:var(--primary)]"
+          />
+        </Field>
+        <Field label="Class section">
+          <input
+            value={section}
+            onChange={(e) => setSection(e.target.value)}
+            className="sp-focus h-12 w-full rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)] px-3 font-mono-nums text-sm text-[color:var(--ink)] outline-none focus:border-[color:var(--primary)]"
+          />
+        </Field>
+        <Field label="Seat zone">
+          <select
+            value={zone}
+            onChange={(e) => setZone(e.target.value)}
+            className="sp-focus h-12 w-full rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)] px-3 font-mono-nums text-sm text-[color:var(--ink)] outline-none focus:border-[color:var(--primary)]"
+          >
+            {["front", "mid", "back"].map((z) => (
+              <option key={z} value={z}>{z}</option>
+            ))}
+          </select>
+        </Field>
+        <button type="submit" disabled={busy} className="sp-btn sp-btn-primary h-12 lg:col-span-5">
+          <UserPlus className="h-4 w-4" /> {busy ? "Adding…" : "Add student"}
+        </button>
+      </form>
+      {added.length > 0 && (
+        <div className="mt-4 border-t border-[color:var(--line)] pt-3">
+          <div className="font-mono-nums text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            Added this session
+          </div>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {added.map((a, i) => (
+              <li key={i} className="rounded-full border border-[color:var(--ok)]/30 bg-[color:var(--ok)]/10 px-3 py-1 font-mono-nums text-[11px] text-[color:var(--ok)]">
+                {a}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Field({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
+  return (
+    <label className={className}>
+      <div className="mb-1 font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+        {label}
+      </div>
+      {children}
+    </label>
+  );
+}
 
 function EnrollmentPage() {
   const [step, setStep] = useState(0);
@@ -42,9 +157,14 @@ function EnrollmentPage() {
           Add a student
         </h2>
         <p className="mt-1 text-sm text-[color:var(--muted)]">
-          One capture per student. Target 10–20 quality frames — never 50. Video and frames are purged immediately after the embedding is stored.
+          First create the student's roster record below. Then capture their face (10–20 quality
+          frames — never 50); video and frames are purged immediately after the embedding is stored.
         </p>
       </header>
+
+      {/* Real add-student form: creates the roster identity row. Face embedding
+          is the separate capture flow below. */}
+      <AddStudentForm />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         {/* Main panel */}

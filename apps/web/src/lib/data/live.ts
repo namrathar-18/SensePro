@@ -199,11 +199,59 @@ export async function fetchSessionsLive(): Promise<SessionRow[]> {
   });
 }
 
+export interface MgmtSession {
+  id: string;
+  label: string; // short date/time
+  subject: string;
+  section: string;
+  present: number;
+  total: number;
+  attendance: number; // 0..1
+  vnei: number | null; // class-level engagement, null when none recorded (k-floor)
+}
+
+/** Real per-session cohort summaries for the management view: attendance (always
+ *  available) plus class-level VNEI where an aggregate exists. Newest last so a
+ *  trend line reads left-to-right in time. */
+export async function fetchManagementSessions(): Promise<MgmtSession[]> {
+  const sessions = await fetchSessionsLive(); // newest first
+  const { data: studs } = await supabase.from("students").select("id");
+  const total = (studs?.length ?? 0) || 53;
+  const { data: aggs } = await supabase
+    .from("engagement_zone_aggregates")
+    .select("session_id, zone, vnei")
+    .eq("zone", "class");
+  const vneiBy = new Map<string, number>();
+  for (const a of (aggs ?? []) as { session_id: string; vnei: number }[]) {
+    if (!vneiBy.has(a.session_id)) vneiBy.set(a.session_id, a.vnei);
+  }
+  const fmt = (iso: string) => {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime())
+      ? "—"
+      : d.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) +
+          " " +
+          d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  };
+  return sessions
+    .map((s) => ({
+      id: s.id,
+      label: fmt(s.starts_at),
+      subject: s.subject,
+      section: s.class_section,
+      present: s.present,
+      total,
+      attendance: total ? s.present / total : 0,
+      vnei: vneiBy.get(s.id) ?? null,
+    }))
+    .reverse(); // oldest -> newest for the trend
+}
+
 /** The signed-in student's own attendance history (RLS returns only their rows). */
 export async function fetchMyAttendanceLive(): Promise<AttendanceRecord[]> {
   const { data, error } = await supabase
     .from("presence_intervals")
-    .select("state, started_at, session_id, class_sessions(subject, starts_at)")
+    .select("state, started_at, session_id, class_sessions(subject, class_section, starts_at)")
     .order("started_at", { ascending: false })
     .limit(60);
   if (error) throw error;
@@ -211,10 +259,15 @@ export async function fetchMyAttendanceLive(): Promise<AttendanceRecord[]> {
   for (const r of (data ?? []) as Record<string, unknown>[]) {
     const sid = r.session_id as string;
     if (bySession.has(sid)) continue; // latest state per session
-    const cs = (r.class_sessions ?? {}) as { subject?: string; starts_at?: string };
+    const cs = (r.class_sessions ?? {}) as {
+      subject?: string;
+      class_section?: string;
+      starts_at?: string;
+    };
     bySession.set(sid, {
       session_id: sid,
-      class_name: cs.subject ?? "Session",
+      class_name: cs.class_section ?? "—", // the class the session was saved under
+      subject: cs.subject ?? "Session",
       date: cs.starts_at ?? (r.started_at as string),
       state: r.state as AttendanceRecord["state"],
     });

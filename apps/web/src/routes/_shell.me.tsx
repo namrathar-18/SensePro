@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Hand } from "lucide-react";
 import { StateChip } from "@/components/sp/StateChip";
 import { fetchMyAttendanceLive } from "@/lib/data/live";
+import { fetchActiveSession } from "@/lib/data/roster";
+import { overridePresence } from "@/lib/data/attendance";
 import { useAuth } from "@/lib/auth";
 import type { AttendanceRecord } from "@/lib/data/types";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_shell/me")({
@@ -21,10 +24,36 @@ function MePage() {
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [deleted, setDeleted] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+  const [requested, setRequested] = useState(false);
 
   useEffect(() => {
     fetchMyAttendanceLive().then(setHistory).catch(() => {});
   }, []);
+
+  // Ask the teacher to verify my presence: flags me UNVERIFIED in the live
+  // session so I surface on the teacher's roster (and QR check-in) for review.
+  async function requestPresenceCheck() {
+    if (!user?.reg_no) {
+      toast.error("Sign in as a student to request a check");
+      return;
+    }
+    setRequesting(true);
+    try {
+      const session = await fetchActiveSession();
+      if (!session) {
+        toast.error("No live session right now — ask your teacher to start one");
+        return;
+      }
+      await overridePresence(session.id, user.reg_no, "UNVERIFIED");
+      setRequested(true);
+      toast.success("Request sent — your teacher will verify you");
+    } catch {
+      toast.error("Could not send the request");
+    } finally {
+      setRequesting(false);
+    }
+  }
 
   const strip = history.slice(0, 21).reverse();
 
@@ -95,7 +124,12 @@ function MePage() {
                     <td className="px-5 py-2.5 font-mono-nums text-xs text-[color:var(--muted)]">
                       {new Date(h.date).toLocaleDateString()}
                     </td>
-                    <td className="px-5 py-2.5 text-[color:var(--ink)]">{h.class_name}</td>
+                    <td className="px-5 py-2.5 text-[color:var(--ink)]">
+                      {h.class_name}
+                      <span className="ml-2 font-mono-nums text-[11px] text-[color:var(--muted)]">
+                        {h.subject}
+                      </span>
+                    </td>
                     <td className="px-5 py-2.5"><StateChip state={h.state} /></td>
                   </tr>
                 ))}
@@ -107,6 +141,34 @@ function MePage() {
 
       {/* Right column */}
       <div className="space-y-6">
+        {/* Request presence check — for when the camera didn't verify me */}
+        <section className="glass-panel p-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-[color:var(--primary)]/40 bg-[color:var(--primary)]/10 text-[color:var(--primary)]">
+              <Hand className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="font-mono-nums text-[11px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+                Not marked present?
+              </div>
+              <div className="font-display text-lg font-extrabold tracking-tight text-[color:var(--ink)]">
+                Request presence check
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-sm text-[color:var(--muted)]">
+            If the camera couldn't verify you, send a request — you'll show up on your teacher's
+            screen for manual verification (or a QR check-in).
+          </p>
+          <button
+            onClick={requestPresenceCheck}
+            disabled={requesting || requested}
+            className="sp-focus mt-4 h-12 w-full rounded-md bg-[color:var(--primary)] text-sm font-semibold text-white transition-colors hover:bg-[color:var(--primary-deep)] disabled:opacity-50"
+          >
+            {requested ? "Request sent ✓" : requesting ? "Sending…" : "Request presence check"}
+          </button>
+        </section>
+
         <section className="glass-panel p-6">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-md border border-[color:var(--ok)]/40 bg-[color:var(--ok)]/10 text-[color:var(--ok)]">

@@ -85,7 +85,8 @@ export interface UserRow {
 
 export interface AttendanceRecord {
   session_id: string;
-  class_name: string;
+  class_name: string; // the class/cohort, e.g. "4MCA-B"
+  subject: string; // the session subject, e.g. "OS mid term"
   date: string;
   state: AttendanceState;
 }

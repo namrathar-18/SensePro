@@ -144,7 +144,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
       <ParticleField className="fixed inset-0 -z-10" count={10} maxOpacity={0.05} speed={0.1} />
 
       {/* Desktop sidebar */}
-      <aside className="glass-frosted sticky top-0 hidden h-screen w-[232px] shrink-0 flex-col rounded-none border-0 border-r border-[color:var(--line)] lg:flex">
+      <aside className="glass-frosted sticky top-0 hidden h-screen w-[268px] shrink-0 flex-col rounded-none border-0 border-r border-[color:var(--line)] lg:flex">
         {navContent}
       </aside>
 

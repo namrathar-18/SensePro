@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.sessions import router as sessions_router
+from app.students import router as students_router
 from app.ws import router as ws_router
 
 logger = logging.getLogger("sensepro.main")
@@ -43,6 +44,7 @@ app.add_middleware(
 )
 app.include_router(ws_router)
 app.include_router(sessions_router)
+app.include_router(students_router)
 
 
 @app.get("/health")

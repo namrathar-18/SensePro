@@ -3,8 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
 } from "recharts";
-import { mockSessions, mockVneiTrend } from "@/lib/data/mock";
-import { fetchZonesLive } from "@/lib/data/live";
+import { fetchZonesLive, fetchManagementSessions, type MgmtSession } from "@/lib/data/live";
 import { ZoneStrip } from "@/components/charts/ZoneStrip";
 import { cn } from "@/lib/utils";
 import type { ZoneAggregate } from "@/lib/data/types";
@@ -42,7 +41,20 @@ function ManagementPage() {
     void refresh();
   }, [refresh]);
 
-  const trend = useMemo(() => mockVneiTrend(), []);
+  // Real cohort sessions (attendance always available; VNEI where recorded).
+  const [mgmtSessions, setMgmtSessions] = useState<MgmtSession[]>([]);
+  useEffect(() => {
+    fetchManagementSessions().then(setMgmtSessions).catch(() => {});
+  }, []);
+  const trend = useMemo(
+    () =>
+      mgmtSessions.map((s) => ({
+        session: s.label,
+        attendance: Math.round(s.attendance * 100),
+        vnei: s.vnei,
+      })),
+    [mgmtSessions],
+  );
   const [zones, setZones] = useState<ZoneAggregate[]>([]);
   useEffect(() => {
     fetchZonesLive().then(setZones).catch(() => {});
@@ -53,60 +65,91 @@ function ManagementPage() {
     n_visible: z.n_visible ?? z.n_tracked,
     suppressed: z.n_tracked < 5,
   })), [zones]);
-  const sessions = useMemo(() => mockSessions(), []);
-  const [compareA, setCompareA] = useState(sessions[0]?.id ?? "");
-  const [compareB, setCompareB] = useState(sessions[1]?.id ?? "");
+  const sessions = mgmtSessions;
+  const [compareA, setCompareA] = useState("");
+  const [compareB, setCompareB] = useState("");
+  useEffect(() => {
+    // Default the comparison to the two most recent sessions once loaded.
+    if (mgmtSessions.length && !compareA) {
+      const newest = [...mgmtSessions].reverse();
+      setCompareA(newest[0]?.id ?? "");
+      setCompareB(newest[1]?.id ?? newest[0]?.id ?? "");
+    }
+  }, [mgmtSessions, compareA]);
 
   return (
     <div className="space-y-8">
-      {/* VNEI trend */}
+      {/* What this module is */}
+      <header>
+        <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          § management · cohort analytics
+        </div>
+        <h2 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-[color:var(--ink)]">
+          Cohort attendance & engagement
+        </h2>
+        <p className="mt-1 max-w-2xl text-sm text-[color:var(--muted)]">
+          The management view rolls up the class across sessions — attendance trends and
+          fairness-aware engagement (VNEI) by seating zone. It is <strong>aggregate only</strong>:
+          there is no per-student score anywhere here, and any zone with fewer than 5 tracked faces
+          is withheld.
+        </p>
+      </header>
+
+      {/* Attendance trend (real, per session) */}
       <section className="glass-panel p-6">
         <header className="flex items-center justify-between">
           <div>
             <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Class engagement · VNEI
+              Attendance · live
             </div>
             <div className="mt-0.5 font-display text-xl font-extrabold tracking-tight text-[color:var(--ink)]">
-              Trend across sessions
+              Across sessions
             </div>
           </div>
           <div className="font-mono-nums text-[11px] text-[color:var(--muted)]">
-            Aggregate only · no per-student scoring
+            % of cohort present · aggregate only
           </div>
         </header>
-        <div className="mt-4 h-[260px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={trend} margin={{ top: 10, right: 12, left: -10, bottom: 0 }}>
-              <defs>
-                <linearGradient id="vneiG" x1="0" x2="1">
-                  <stop offset="0%" stopColor="#F59E0B" />
-                  <stop offset="100%" stopColor="#10B981" />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="2 4" />
-              <XAxis dataKey="session" stroke="#6B6B78" tick={{ fontFamily: "IBM Plex Mono", fontSize: 11 }} />
-              <YAxis domain={[0, 1]} stroke="#6B6B78" tick={{ fontFamily: "IBM Plex Mono", fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{
-                  background: "#151519",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: 8,
-                  fontFamily: "IBM Plex Mono",
-                  fontSize: 12,
-                }}
-                labelStyle={{ color: "#6B6B78" }}
-              />
-              <Line
-                type="monotone"
-                dataKey="vnei"
-                stroke="url(#vneiG)"
-                strokeWidth={2.5}
-                dot={{ fill: "#F59E0B", r: 3 }}
-                activeDot={{ r: 5, fill: "#10B981" }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        {trend.length === 0 ? (
+          <p className="py-10 text-center font-mono-nums text-[12px] text-[color:var(--muted)]">
+            No sessions recorded yet — run a session to populate the trend.
+          </p>
+        ) : (
+          <div className="mt-4 h-[260px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trend} margin={{ top: 10, right: 12, left: -10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="vneiG" x1="0" x2="1">
+                    <stop offset="0%" stopColor="#F59E0B" />
+                    <stop offset="100%" stopColor="#10B981" />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="2 4" />
+                <XAxis dataKey="session" stroke="#6B6B78" tick={{ fontFamily: "IBM Plex Mono", fontSize: 11 }} />
+                <YAxis domain={[0, 100]} stroke="#6B6B78" tick={{ fontFamily: "IBM Plex Mono", fontSize: 11 }} />
+                <Tooltip
+                  contentStyle={{
+                    background: "#151519",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    borderRadius: 8,
+                    fontFamily: "IBM Plex Mono",
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: "#6B6B78" }}
+                  formatter={(v: number) => [`${v}%`, "attendance"]}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="attendance"
+                  stroke="url(#vneiG)"
+                  strokeWidth={2.5}
+                  dot={{ fill: "#F59E0B", r: 3 }}
+                  activeDot={{ r: 5, fill: "#10B981" }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </section>
 
       {/* Live VNEI by zone */}
@@ -318,19 +361,24 @@ function ManagementPage() {
             return (
               <div key={i} className="rounded-lg border border-[color:var(--line)] bg-[color:var(--surface-2)]/60 p-5">
                 <div className="font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
-                  {s.id}
+                  {s.section} · {s.label}
                 </div>
                 <div className="mt-1 font-display text-lg font-extrabold tracking-tight text-[color:var(--ink)]">
-                  {s.class_name}
+                  {s.subject}
                 </div>
                 <div className="mt-4 grid grid-cols-3 gap-3">
-                  <MiniStat label="Present" value={`${s.present_count}/${s.total_count}`} />
-                  <MiniStat label="Attendance" value={`${Math.round((s.present_count / s.total_count) * 100)}%`} />
-                  <MiniStat label="VNEI" value={s.vnei.toFixed(2)} accent />
+                  <MiniStat label="Present" value={`${s.present}/${s.total}`} />
+                  <MiniStat label="Attendance" value={`${Math.round(s.attendance * 100)}%`} />
+                  <MiniStat label="VNEI" value={s.vnei == null ? "—" : s.vnei.toFixed(2)} accent />
                 </div>
               </div>
             );
           })}
+          {sessions.length === 0 && (
+            <div className="md:col-span-2 py-8 text-center font-mono-nums text-[12px] text-[color:var(--muted)]">
+              No sessions to compare yet.
+            </div>
+          )}
         </div>
       </section>
     </div>
@@ -340,7 +388,7 @@ function ManagementPage() {
 function SessionPick({
   value, onChange, sessions,
 }: {
-  value: string; onChange: (v: string) => void; sessions: ReturnType<typeof mockSessions>;
+  value: string; onChange: (v: string) => void; sessions: MgmtSession[];
 }) {
   return (
     <select
@@ -350,7 +398,7 @@ function SessionPick({
     >
       {sessions.map((s) => (
         <option key={s.id} value={s.id}>
-          {s.id} · {s.class_name}
+          {s.label} · {s.subject}
         </option>
       ))}
     </select>

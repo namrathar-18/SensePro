@@ -22,3 +22,25 @@ export async function overridePresence(
   });
   if (!res.ok) throw new Error(`override failed: ${res.status}`);
 }
+
+export interface NewStudent {
+  reg_no: string;
+  full_name: string;
+  class_section: string;
+  seat_zone: string;
+}
+
+/** Create a student roster record (identity row). Face embedding is a separate
+ *  capture step. Returns the created student's id. */
+export async function createStudent(s: NewStudent): Promise<string> {
+  const res = await fetch(`${apiBase()}/v1/students`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(s),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error((detail as { detail?: string }).detail ?? `create failed: ${res.status}`);
+  }
+  return (await res.json()).id as string;
+}

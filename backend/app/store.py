@@ -122,6 +122,9 @@ class PresenceWriter(Protocol):
     def set_manual_presence(
         self, session_id: str, reg_no: str, state: str, at: datetime
     ) -> None: ...
+    def create_student(
+        self, reg_no: str, full_name: str, class_section: str, seat_zone: str
+    ) -> str: ...
 
 
 class NoopWriter:
@@ -152,6 +155,12 @@ class NoopWriter:
         self, session_id: str, reg_no: str, state: str, at: datetime
     ) -> None:
         logger.info("noop manual presence %s %s -> %s", session_id, reg_no, state)
+
+    def create_student(
+        self, reg_no: str, full_name: str, class_section: str, seat_zone: str
+    ) -> str:
+        logger.info("noop create_student %s %s", reg_no, full_name)
+        return "noop-student"
 
 
 class SupabaseWriter:
@@ -274,6 +283,25 @@ class SupabaseWriter:
                 session_id=session_id, student_id=student_id, state=state, started_at=at
             ).open_payload(),
         ).raise_for_status()
+
+    def create_student(
+        self, reg_no: str, full_name: str, class_section: str, seat_zone: str
+    ) -> str:
+        """Create (or upsert on reg_no) a student roster record. This adds the
+        identity row; the face embedding is a separate capture step (the enrol
+        CLI). Returns the student id. Raises on failure."""
+        r = self._client.post(
+            "/students",
+            headers={"Prefer": "return=representation,resolution=merge-duplicates"},
+            json={
+                "reg_no": reg_no,
+                "full_name": full_name,
+                "class_section": class_section,
+                "seat_zone": seat_zone,
+            },
+        )
+        r.raise_for_status()
+        return r.json()[0]["id"]
 
     def _ensure_default_device(self) -> str:
         """class_sessions.device_id is NOT NULL but browser capture has no
