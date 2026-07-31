@@ -212,7 +212,10 @@ def build_observers(
             cooldown_s=settings.proctor_cooldown_s,
             student_id_map=student_id_map or {},
         )
-    extractor = SignalExtractor(attend_pitch_deg=settings.engagement_head_down_pitch_deg)
+    extractor = SignalExtractor(
+        attend_pitch_deg=settings.engagement_head_down_pitch_deg,
+        look_away_ratio=settings.engagement_look_away_ratio,
+    )
     aggregator = ZoneAggregator(
         session_id=session_id,
         writer=writer,
@@ -265,12 +268,17 @@ def build_observers(
         visible = [s for s in vals if s.head_down is not None]
         n_vis = len(visible)
         n_down = sum(1 for s in visible if s.head_down)
+        n_away = sum(1 for s in visible if s.looking_away)
         n_phone = sum(1 for s in visible if s.phone_nearby)
-        n_attend = sum(1 for s in visible if not s.head_down and not s.phone_nearby)
+        # Attending = head up, facing the board, and no phone.
+        n_attend = sum(
+            1 for s in visible if not s.head_down and not s.looking_away and not s.phone_nearby
+        )
         view.engagement = {
             "visible": n_vis,
             "attending": n_attend,
             "head_down": n_down,
+            "looking_away": n_away,
             "phone": n_phone,
             "vnei": round(n_attend / n_vis, 2) if n_vis else None,
             "k_min": settings.engagement_k_min,

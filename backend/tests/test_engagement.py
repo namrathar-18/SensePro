@@ -29,7 +29,13 @@ def _track(tid: int, y_centre: int = 200, eyes: str | None = None) -> Track:
 
 def _sig(attending: bool | None = True) -> TrackSignals:
     head_down = None if attending is None else not attending
-    return TrackSignals(attending=attending, head_down=head_down, phone_nearby=False, still=None)
+    return TrackSignals(
+        attending=attending,
+        head_down=head_down,
+        looking_away=None if attending is None else False,
+        phone_nearby=False,
+        still=None,
+    )
 
 
 class FakeAggWriter:

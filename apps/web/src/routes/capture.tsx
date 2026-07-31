@@ -55,6 +55,7 @@ interface WsEngagement {
   visible: number; // tracks whose head pose could be read
   attending: number;
   head_down: number; // disengagement / "sleeping" proxy
+  looking_away: number; // head turned away from the board
   phone: number; // distraction proxy (phone next to a face)
   vnei: number | null; // attending / visible, 0..1 (class-level)
   k_min: number;
@@ -973,16 +974,18 @@ function CapturePage() {
                   <span
                     className={cn(
                       "rounded-full px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-[0.14em]",
-                      engagement.head_down > 0 || engagement.phone > 0
+                      engagement.head_down > 0 || engagement.looking_away > 0 || engagement.phone > 0
                         ? "bg-[color:var(--warn)]/15 text-[color:var(--warn)]"
                         : "bg-[color:var(--ok)]/15 text-[color:var(--ok)]",
                     )}
                   >
                     {engagement.head_down > 0
                       ? "head-down"
-                      : engagement.phone > 0
-                        ? "distracted"
-                        : "attentive"}
+                      : engagement.looking_away > 0
+                        ? "looking away"
+                        : engagement.phone > 0
+                          ? "distracted"
+                          : "attentive"}
                   </span>
                 )}
               </div>
@@ -1007,6 +1010,9 @@ function CapturePage() {
                     </span>
                     <span className={engagement.head_down > 0 ? "text-[color:var(--warn)]" : "text-[color:var(--muted)]"}>
                       {engagement.head_down} head-down
+                    </span>
+                    <span className={engagement.looking_away > 0 ? "text-[color:var(--warn)]" : "text-[color:var(--muted)]"}>
+                      {engagement.looking_away} looking away
                     </span>
                     <span className={engagement.phone > 0 ? "text-[color:var(--warn)]" : "text-[color:var(--muted)]"}>
                       {engagement.phone} on phone

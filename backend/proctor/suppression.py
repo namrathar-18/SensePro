@@ -38,6 +38,22 @@ def estimate_pitch_deg(det: Detection) -> float | None:
     return -(eye_ratio - _LEVEL_EYE_RATIO) * _DEG_PER_RATIO
 
 
+def estimate_yaw_ratio(det: Detection) -> float | None:
+    """Horizontal head-turn proxy: 0 = facing the camera, larger = turned away.
+    From the InsightFace kps, the nose's horizontal offset from the eye midpoint,
+    normalised by the inter-eye distance (so it's scale-free). None without
+    landmarks (the stub)."""
+    if len(det.landmarks) < 3:
+        return None
+    lx = det.landmarks[0][0]
+    rx = det.landmarks[1][0]
+    nx = det.landmarks[2][0]
+    eye_dist = abs(rx - lx)
+    if eye_dist <= 1:
+        return None
+    return abs(nx - (lx + rx) / 2.0) / eye_dist
+
+
 class GazeSuppressor:
     """Remembers, per track, when it last looked down; answers whether a
     phone flag at time ts should be suppressed. Times are the pipeline's

@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     # clear look-down at the desk; a level face reads ~0, so a normal glance
     # doesn't trip it. (Was -35, which needed an extreme head-down to register.)
     engagement_head_down_pitch_deg: float = -22.0
+    # Head-turn ratio at/above which a student counts as "looking away" from the
+    # board (0 = facing camera). A frontal face reads ~0.03, so 0.35 flags a
+    # clear turn without tripping on a level gaze.
+    engagement_look_away_ratio: float = 0.35
     zone_front_band: float = 0.66
     zone_back_band: float = 0.33
     # k-anonymity floor: zones with fewer than this many tracked faces are

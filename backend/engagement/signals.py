@@ -23,7 +23,7 @@ from dataclasses import dataclass
 
 from proctor.detector import ObjectDetection
 from proctor.engine import ProctorEngine
-from proctor.suppression import estimate_pitch_deg
+from proctor.suppression import estimate_pitch_deg, estimate_yaw_ratio
 from vision.types import Track
 
 
@@ -33,6 +33,7 @@ class TrackSignals:
 
     attending: bool | None  # head not pitched down past the attention band
     head_down: bool | None
+    looking_away: bool | None  # head turned away from the board past the yaw band
     phone_nearby: bool
     still: bool | None  # None on first sighting (no prior position)
 
@@ -46,9 +47,15 @@ class SignalExtractor:
     """Stateful only for movement (last centre per track id) — nothing else
     is remembered between frames, and nothing here is ever written out."""
 
-    def __init__(self, attend_pitch_deg: float = -35.0, still_frac: float = 0.02) -> None:
+    def __init__(
+        self,
+        attend_pitch_deg: float = -35.0,
+        still_frac: float = 0.02,
+        look_away_ratio: float = 0.35,
+    ) -> None:
         self._attend_pitch = attend_pitch_deg
         self._still_frac = still_frac
+        self._look_away_ratio = look_away_ratio
         self._last_centre: dict[int, tuple[float, float]] = {}
 
     def extract(
@@ -68,6 +75,8 @@ class SignalExtractor:
         for tr in tracks:
             pitch = estimate_pitch_deg(tr.det)
             head_down = None if pitch is None else pitch <= self._attend_pitch
+            yaw = estimate_yaw_ratio(tr.det)
+            looking_away = None if yaw is None else yaw >= self._look_away_ratio
             cx, cy = _centre(tr)
             prev = self._last_centre.get(tr.track_id)
             still = None
@@ -75,9 +84,12 @@ class SignalExtractor:
                 moved = ((cx - prev[0]) ** 2 + (cy - prev[1]) ** 2) ** 0.5
                 still = moved <= still_limit
             self._last_centre[tr.track_id] = (cx, cy)
+            # Attending = head not down AND not turned away (both readable).
+            attending = None if head_down is None else (not head_down and not looking_away)
             out[tr.track_id] = TrackSignals(
-                attending=None if head_down is None else not head_down,
+                attending=attending,
                 head_down=head_down,
+                looking_away=looking_away,
                 phone_nearby=tr.track_id in phone_tracks,
                 still=still,
             )
