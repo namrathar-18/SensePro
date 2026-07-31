@@ -351,7 +351,13 @@ function TeacherPage() {
                     section: session?.class_section ?? "4MCA-B",
                     subject: session?.subject ?? "Live session",
                     roster: roster as never,
-                  }).catch(() => toast.error("Could not generate the PDF"))
+                  })
+                    .then(() => toast.success("Report downloaded"))
+                    .catch((err) =>
+                      toast.error(
+                        err instanceof Error ? err.message : "Could not generate the PDF",
+                      ),
+                    )
                 }
                 className="sp-focus flex h-12 items-center gap-2 rounded-md bg-[color:var(--primary)] px-4 text-xs font-semibold text-white transition-colors hover:bg-[color:var(--primary-deep)]">
                 <Download className="h-3.5 w-3.5" /> Export session report (PDF)

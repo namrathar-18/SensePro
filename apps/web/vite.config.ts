@@ -17,4 +17,11 @@ export default defineConfig({
     host: true,
     strictPort: false,
   },
+  // Pre-bundle the PDF/QR libs at startup. They are only reached through a
+  // dynamic import (the export button), so Vite would otherwise discover them
+  // mid-session, re-optimize, and serve the already-open page a stale
+  // "504 Outdated Optimize Dep" — which made PDF export fail until a refresh.
+  optimizeDeps: {
+    include: ["jspdf", "jspdf-autotable", "qrcode"],
+  },
 });

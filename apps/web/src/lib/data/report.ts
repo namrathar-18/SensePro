@@ -9,11 +9,18 @@ export async function exportSessionPdf(opts: {
   subject: string | null;
   roster: RosterEntry[];
 }): Promise<void> {
-  // Loaded on demand: the PDF libs are heavy and only needed on export.
-  const [{ jsPDF }, { default: autoTable }] = await Promise.all([
-    import("jspdf"),
-    import("jspdf-autotable"),
-  ]);
+  // Loaded on demand: the PDF libs are heavy and only needed on export. A failed
+  // chunk load here is almost always a stale dev/deploy asset cache, so say that
+  // rather than surfacing an opaque "could not generate" (see vite optimizeDeps).
+  let jsPDF: typeof import("jspdf").jsPDF;
+  let autoTable: typeof import("jspdf-autotable").default;
+  try {
+    const [pdfMod, tableMod] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+    jsPDF = pdfMod.jsPDF;
+    autoTable = tableMod.default;
+  } catch {
+    throw new Error("PDF library failed to load — refresh the page and try again");
+  }
   const doc = new jsPDF();
   const now = new Date();
 

@@ -47,8 +47,8 @@ async function exportSession(r: SessionRow) {
     }
     await exportSessionPdf({ section: r.class_section, subject: r.subject, roster: roster as never });
     toast.success("Report downloaded");
-  } catch {
-    toast.error("Could not generate the PDF");
+  } catch (err) {
+    toast.error(err instanceof Error ? err.message : "Could not generate the PDF");
   }
 }
 
