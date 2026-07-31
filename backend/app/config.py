@@ -65,6 +65,11 @@ class Settings(BaseSettings):
     # of frame height (camera at the front: lower in frame = nearer = front).
     # Aggregates only; zones under 5 tracked faces are suppressed (k-floor).
     engagement_window_s: float = 60.0
+    # Head-pitch (deg, negative = down) at/below which a student counts as
+    # "head-down" — the disengagement / drowsy / "sleeping" proxy. -22 catches a
+    # clear look-down at the desk; a level face reads ~0, so a normal glance
+    # doesn't trip it. (Was -35, which needed an extreme head-down to register.)
+    engagement_head_down_pitch_deg: float = -22.0
     zone_front_band: float = 0.66
     zone_back_band: float = 0.33
     # k-anonymity floor: zones with fewer than this many tracked faces are

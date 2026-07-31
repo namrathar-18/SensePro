@@ -212,7 +212,7 @@ def build_observers(
             cooldown_s=settings.proctor_cooldown_s,
             student_id_map=student_id_map or {},
         )
-    extractor = SignalExtractor()
+    extractor = SignalExtractor(attend_pitch_deg=settings.engagement_head_down_pitch_deg)
     aggregator = ZoneAggregator(
         session_id=session_id,
         writer=writer,
