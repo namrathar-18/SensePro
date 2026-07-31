@@ -227,23 +227,18 @@ function TeacherPage() {
   // explicitly issues a QR to (e.g. an ABSENT student who is actually present).
   const [qrOn] = useQrEnabled();
   const [qrPending, setQrPending] = useState<Set<string>>(new Set());
+  // Pending = camera-unverified or teacher-issued, but not already present. As a
+  // student checks in via the QR, presence updates over Realtime and they drop.
   const unverified = useMemo(
     () =>
       roster
-        .filter((r) => r.state === "UNVERIFIED" || qrPending.has(r.student_id))
+        .filter(
+          (r) =>
+            r.state !== "PRESENT" && (r.state === "UNVERIFIED" || qrPending.has(r.student_id)),
+        )
         .map((r) => ({ student_id: r.student_id, full_name: r.full_name })),
     [roster, qrPending],
   );
-  const resolveQr = useCallback((id: string, state: AttendanceState) => {
-    setRoster((prev) =>
-      prev.map((r) => (r.student_id === id ? ({ ...r, state } as RosterEntry) : r)),
-    );
-    setQrPending((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  }, []);
 
   // Manual teacher override for edge cases. Optimistic locally; persisted to the
   // live session via the backend when one is running (Realtime then confirms).
@@ -289,7 +284,7 @@ function TeacherPage() {
       </div>
 
       {qrOn && unverified.length > 0 && (
-        <QrVerification students={unverified} onResolve={resolveQr} />
+        <QrVerification sessionId={session?.id ?? null} students={unverified} />
       )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
