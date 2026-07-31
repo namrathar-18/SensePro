@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     # are detected (more students at once), at more CPU per frame. 640 is the
     # buffalo_l default; raise to 960/1024 for a dense classroom.
     vision_det_size: int = 800
+    # SCRFD detection confidence floor. InsightFace defaults to 0.5, which drops
+    # the small, partly-turned faces in the back rows of a full classroom. 0.4
+    # recovers them; recognition still has to clear cosine_threshold, so a weak
+    # detection cannot become a wrong identity — it just becomes an unknown box.
+    vision_det_thresh: float = 0.4
     reid_interval_s: float = 30.0
     miss_threshold: int = 3
     # Roll-call latch (single laptop webcam panning a room): once recognised,

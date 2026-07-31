@@ -17,11 +17,11 @@ EMB_DIM = 512
 
 
 class InsightFaceBackend:
-    def __init__(self, det_size: int = 640) -> None:
+    def __init__(self, det_size: int = 640, det_thresh: float = 0.5) -> None:
         from insightface.app import FaceAnalysis  # lazy
 
         self.app = FaceAnalysis(name="buffalo_l")
-        self.app.prepare(ctx_id=0, det_size=(det_size, det_size))
+        self.app.prepare(ctx_id=0, det_size=(det_size, det_size), det_thresh=det_thresh)
         self._faces_cache: list = []
 
     def detect(self, frame_bgr: np.ndarray) -> list[Detection]:

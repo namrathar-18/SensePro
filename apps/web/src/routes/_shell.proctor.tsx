@@ -24,9 +24,12 @@ interface Flag {
   status: "awaiting_review" | "dismissed" | "upheld";
 }
 
+// "extra_person" is no longer raised (body-vs-face counting was unreliable under
+// camera motion and produced false positives), but historical rows still exist —
+// keep the label so old flags render honestly rather than as "undefined".
 const TYPE_LABELS: Record<string, string> = {
   phone: "Phone detected",
-  extra_person: "Extra person",
+  extra_person: "Extra person (legacy — no longer raised)",
   head_pose: "Suspicious gaze",
 };
 
@@ -68,9 +71,9 @@ function ProctorPage() {
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-[color:var(--muted)]">
           Exam-mode capture raises <span className="text-[color:var(--ink)]">candidate</span> events
-          (a phone or an extra person in frame) — never verdicts. This queue is where a human
-          confirms or dismisses each one: the system assists, it never auto-penalises. Every decision
-          is logged for audit, and no image is ever stored.
+          — a phone visible in frame — never verdicts. This queue is where a human confirms or
+          dismisses each one: the system assists, it never auto-penalises. Every decision is logged
+          for audit, and no image is ever stored.
         </p>
       </header>
 

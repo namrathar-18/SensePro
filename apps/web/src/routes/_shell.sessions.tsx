@@ -4,6 +4,8 @@ import { Download, ClipboardList, Users, ShieldAlert, Wrench, Square } from "luc
 import { fetchSessionsLive, type SessionRow } from "@/lib/data/live";
 import { fetchStudents, fetchIntervals, deriveRoster } from "@/lib/data/roster";
 import { exportSessionPdf } from "@/lib/data/report";
+import { fetchFlags } from "@/lib/data/proctor";
+import { fetchZoneAggregates } from "@/lib/data/engagement";
 import { endSession } from "@/lib/data/attendance";
 import { toast } from "sonner";
 
@@ -40,13 +42,59 @@ function fmtWhen(iso: string): string {
 
 async function exportSession(r: SessionRow) {
   try {
-    const [students, intervals] = await Promise.all([fetchStudents(), fetchIntervals(r.id)]);
+    // Pull everything the report covers: roster + proctor flags + engagement.
+    // Flags/aggregates are optional — a lecture has no flags, and engagement is
+    // absent when every window fell below the k-anonymity floor.
+    const [students, intervals, flags, aggregates] = await Promise.all([
+      fetchStudents(),
+      fetchIntervals(r.id),
+      fetchFlags(r.id).catch(() => []),
+      fetchZoneAggregates(r.id).catch(() => []),
+    ]);
     const roster = deriveRoster(students, intervals);
     if (roster.length === 0) {
       toast.error("No roster data for this session yet");
       return;
     }
-    await exportSessionPdf({ section: r.class_section, subject: r.subject, roster: roster as never });
+
+    const nameById = new Map(students.map((s) => [s.id, s.full_name]));
+    const reportFlags = flags.map((f) => ({
+      student: f.student_id ? (nameById.get(f.student_id) ?? "Unknown student") : "Unattributed",
+      type: f.flag_type,
+      at: f.flagged_at,
+      status: f.review_status,
+    }));
+
+    const vneis = aggregates.map((a) => a.vnei).filter((v): v is number => typeof v === "number");
+    const classRows = aggregates.filter((a) => a.zone !== "class");
+    const engagement = aggregates.length
+      ? {
+          windows: new Set(aggregates.map((a) => a.window_start)).size,
+          avgVnei: vneis.length ? vneis.reduce((s, v) => s + v, 0) / vneis.length : null,
+          peakVnei: vneis.length ? Math.max(...vneis) : null,
+          lowVnei: vneis.length ? Math.min(...vneis) : null,
+          byZone: classRows.map((a) => ({
+            zone: a.zone,
+            vnei: a.vnei,
+            coverage: a.coverage,
+            tracked: a.n_tracked,
+          })),
+          signals: Object.entries(aggregates[aggregates.length - 1]?.signals ?? {}).map(
+            ([k, v]) => ({ label: k.replace(/_/g, " "), rate: Number(v) || 0 }),
+          ),
+        }
+      : null;
+
+    await exportSessionPdf({
+      section: r.class_section,
+      subject: r.subject,
+      roster: roster as never,
+      mode: r.mode,
+      startedAt: r.starts_at,
+      endedAt: r.ends_at,
+      flags: r.mode === "exam" ? reportFlags : undefined,
+      engagement,
+    });
     toast.success("Report downloaded");
   } catch (err) {
     toast.error(err instanceof Error ? err.message : "Could not generate the PDF");

@@ -34,7 +34,10 @@ def build_backend():
         if _INSIGHTFACE_SINGLETON is None:
             from vision.insightface_backend import InsightFaceBackend
 
-            _INSIGHTFACE_SINGLETON = InsightFaceBackend(det_size=settings.vision_det_size)
+            _INSIGHTFACE_SINGLETON = InsightFaceBackend(
+                det_size=settings.vision_det_size,
+                det_thresh=settings.vision_det_thresh,
+            )
         return _INSIGHTFACE_SINGLETON, _INSIGHTFACE_SINGLETON
     from vision.stub import StubDetector, StubEmbedder
 
