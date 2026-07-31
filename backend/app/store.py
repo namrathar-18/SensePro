@@ -259,13 +259,24 @@ class SupabaseWriter:
         it identically. Raises on failure so the endpoint can report it."""
         got = self._client.get(
             "/students",
-            params={"reg_no": f"eq.{reg_no}", "select": "id", "limit": "1"},
+            params={"reg_no": f"eq.{reg_no}", "select": "id,class_section", "limit": "1"},
         )
         got.raise_for_status()
         rows = got.json()
         if not rows:
             raise ValueError(f"no student with reg_no {reg_no}")
         student_id = rows[0]["id"]
+        # The student must belong to the class this session was opened for —
+        # otherwise anyone who scans the QR could mark themselves into another
+        # cohort's attendance.
+        sess = self._client.get(
+            "/class_sessions",
+            params={"id": f"eq.{session_id}", "select": "class_section", "limit": "1"},
+        )
+        sess.raise_for_status()
+        sess_rows = sess.json()
+        if sess_rows and sess_rows[0].get("class_section") != rows[0].get("class_section"):
+            raise ValueError(f"{reg_no} is not in this session's class")
         # Close whatever is currently open for this student in this session.
         self._client.patch(
             "/presence_intervals",

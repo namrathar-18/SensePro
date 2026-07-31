@@ -5,6 +5,7 @@ import {
   Camera, Maximize2, Minimize2, Play, Settings2, X, ShieldAlert, Save, CheckCircle2, Activity,
 } from "lucide-react";
 import { ConnectionBadge, type ConnState } from "@/components/sp/ConnectionBadge";
+import { apiBase as sharedApiBase, wsBase as sharedWsBase } from "@/lib/api-config";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/capture")({
@@ -795,7 +796,7 @@ function CapturePage() {
                     <div className="font-mono-nums text-[10px] tracking-wider text-[color:var(--muted)]">
                       {conn === "RECONNECTING"
                         ? "Roster shown below is the last verified state · session continues"
-                        : `${import.meta.env.VITE_WS_URL || "VITE_WS_URL unset"} · will auto-retry`}
+                        : `${sharedWsBase()} · will auto-retry`}
                     </div>
                   </div>
                 </div>
@@ -1285,14 +1286,10 @@ function NumberRow({
   );
 }
 
-function wsBase() {
-  // 127.0.0.1, not localhost: Windows resolves localhost to IPv6 (::1) but
-  // uvicorn listens on IPv4, which silently breaks the capture WebSocket.
-  return (import.meta.env.VITE_WS_URL as string) || "ws://127.0.0.1:8000/ws/capture";
-}
-function apiBase() {
-  return wsBase().replace(/^ws/, "http").replace(/\/ws\/capture$/, "");
-}
+// Backend addresses come from lib/api-config (VITE_API_URL / VITE_WS_URL), so a
+// hosted deploy configures both from one variable.
+const wsBase = sharedWsBase;
+const apiBase = sharedApiBase;
 function captureMode(): "lecture" | "exam" {
   if (typeof window === "undefined") return "lecture";
   return new URLSearchParams(window.location.search).get("mode") === "exam" ? "exam" : "lecture";

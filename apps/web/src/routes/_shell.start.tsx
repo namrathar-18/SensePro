@@ -19,10 +19,7 @@ const MODES: { id: Mode; label: string; icon: typeof Camera; hint: string }[] = 
   { id: "workshop", label: "Workshop", icon: Presentation, hint: "Attendance + engagement" },
 ];
 
-function apiBase() {
-  const ws = (import.meta.env.VITE_WS_URL as string) || "ws://127.0.0.1:8000/ws/capture";
-  return ws.replace(/^ws/, "http").replace(/\/ws\/capture$/, "");
-}
+import { apiBase } from "@/lib/api-config";
 
 function StartSessionPage() {
   const nav = useNavigate();
