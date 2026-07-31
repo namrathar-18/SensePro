@@ -22,25 +22,20 @@ import { useQrEnabled } from "@/lib/qr-settings";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-/** Real 4MCA-B class with a deterministic present/absent spread, shown when
- *  Supabase has no seeded roster/session yet so the dashboard is never empty.
- *  Seed supabase/seed.sql + start a session to switch to live data. */
-function demoRoster(): RosterEntry[] {
-  return CLASS_ROSTER.map((s, i) => {
-    const r = Math.abs(Math.sin((i + 1) * 12.9898) * 43758.5453) % 1;
-    const state: AttendanceState = r < 0.68 ? "PRESENT" : r < 0.85 ? "UNVERIFIED" : "ABSENT";
-    return {
-      student_id: s.reg_no,
-      full_name: s.full_name,
-      reg_no: s.reg_no,
-      state,
-      last_seen:
-        state === "PRESENT"
-          ? new Date(Date.now() - Math.floor(r * 180_000)).toISOString()
-          : null,
-      present_seconds: state === "PRESENT" ? Math.floor(1200 + r * 1800) : 0,
-    } as unknown as RosterEntry;
-  });
+/** The real 4MCA-B class list with NO attendance claimed — every student reads
+ *  ABSENT until live presence data arrives. Shown when Supabase has no seeded
+ *  roster or is unreachable, so the dashboard is never empty but also never
+ *  invents attendance (a fabricated present/absent spread here could be read as
+ *  real). Seed supabase/seed.sql + start a session for live data. */
+function fallbackRoster(): RosterEntry[] {
+  return CLASS_ROSTER.map((s) => ({
+    student_id: s.reg_no,
+    full_name: s.full_name,
+    reg_no: s.reg_no,
+    state: "ABSENT" as AttendanceState,
+    last_seen: null,
+    present_seconds: 0,
+  })) as unknown as RosterEntry[];
 }
 
 export const Route = createFileRoute("/_shell/teacher")({
@@ -128,6 +123,9 @@ function TeacherPage() {
   const [pendingFlags, setPendingFlags] = useState(0);
   const [filter, setFilter] = useState<"ALL" | AttendanceState>("ALL");
   const [now, setNow] = useState(() => Date.now());
+  // True when we're showing the roster WITHOUT live presence data (Supabase not
+  // seeded / unreachable) — surfaced so nobody reads it as real attendance.
+  const [offline, setOffline] = useState(false);
 
   const studentsRef = useRef<Awaited<ReturnType<typeof fetchStudents>>>([]);
   const intervalsRef = useRef<Map<string, IntervalRow>>(new Map());
@@ -155,7 +153,8 @@ function TeacherPage() {
         if (students.length === 0) {
           // Supabase reachable but roster not seeded yet — show the real class
           // so the dashboard is never empty. Run supabase/seed.sql for live data.
-          setRoster(demoRoster());
+          setRoster(fallbackRoster());
+          setOffline(true);
           setLoad("ready");
           return;
         }
@@ -171,7 +170,8 @@ function TeacherPage() {
       } catch {
         // Supabase unreachable / not configured — fall back to the real class.
         if (!cancelled) {
-          setRoster(demoRoster());
+          setRoster(fallbackRoster());
+          setOffline(true);
           setLoad("ready");
         }
       }
@@ -282,6 +282,19 @@ function TeacherPage() {
           hint="Awaiting review"
         />
       </div>
+
+      {offline && (
+        <div className="flex items-center gap-3 rounded-md border border-[color:var(--warn)]/40 bg-[color:var(--warn)]/10 px-4 py-3">
+          <WifiOff className="h-4 w-4 shrink-0 text-[color:var(--warn)]" />
+          <div className="min-w-0 text-[13px] text-[color:var(--warn)]">
+            <span className="font-semibold">No live attendance data.</span>{" "}
+            <span className="text-[color:var(--muted)]">
+              Showing the class roster only — every student reads absent until a session runs and
+              Supabase is reachable. Nothing here is a real attendance record.
+            </span>
+          </div>
+        </div>
+      )}
 
       {qrOn && unverified.length > 0 && (
         <QrVerification sessionId={session?.id ?? null} students={unverified} />

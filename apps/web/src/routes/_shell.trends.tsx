@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip,
   CartesianGrid, AreaChart, Area,
 } from "recharts";
+import { fetchManagementSessions, type MgmtSession } from "@/lib/data/live";
 
 export const Route = createFileRoute("/_shell/trends")({
   head: () => ({
@@ -14,17 +16,6 @@ export const Route = createFileRoute("/_shell/trends")({
   component: TrendsPage,
 });
 
-const days = Array.from({ length: 14 }, (_, i) => {
-  const d = new Date();
-  d.setDate(d.getDate() - (13 - i));
-  return {
-    d: `${d.getDate()}/${d.getMonth() + 1}`,
-    vnei: 0.62 + Math.sin(i / 2) * 0.08 + i * 0.008,
-    attendance: 0.85 + Math.cos(i / 3) * 0.05,
-    coverage: 0.72 + Math.sin(i / 4) * 0.1,
-  };
-});
-
 const tooltipStyle = {
   background: "var(--surface-2)",
   border: "1px solid var(--line)",
@@ -34,31 +25,75 @@ const tooltipStyle = {
 } as const;
 
 function TrendsPage() {
+  const [sessions, setSessions] = useState<MgmtSession[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchManagementSessions()
+      .then(setSessions)
+      .catch(() => setSessions([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Real per-session points, oldest -> newest. VNEI only where an aggregate
+  // exists (k-floor); nulls leave a gap rather than inventing a value.
+  const days = useMemo(
+    () =>
+      sessions.map((s) => ({
+        d: s.label,
+        attendance: s.attendance,
+        vnei: s.vnei,
+      })),
+    [sessions],
+  );
+  const hasVnei = days.some((p) => p.vnei != null);
+
   return (
     <div className="space-y-6">
       <header>
         <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          § 14 days
+          § across sessions
         </div>
         <h2 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-[color:var(--ink)]">
           Aggregate trends
         </h2>
         <p className="mt-1 text-sm text-[color:var(--muted)]">
-          Class-level attendance, VNEI, and camera coverage over the last two weeks. Never per student, never emotion.
+          Class-level attendance and VNEI across every recorded session. Never per student, never emotion.
         </p>
       </header>
 
+      {loading ? (
+        <div className="glass-panel px-4 py-16 text-center font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          Loading sessions…
+        </div>
+      ) : days.length === 0 ? (
+        <div className="glass-panel px-4 py-16 text-center">
+          <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            No sessions recorded yet
+          </div>
+          <p className="mt-2 text-sm text-[color:var(--muted)]">
+            Run a session and the real attendance / engagement trend appears here.
+          </p>
+        </div>
+      ) : (
       <div className="grid gap-6 lg:grid-cols-2">
         <ChartCard title="VNEI (class weighted)" color="var(--primary)">
-          <ResponsiveContainer>
-            <LineChart data={days} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid stroke="var(--line)" strokeDasharray="3 4" vertical={false} />
-              <XAxis dataKey="d" stroke="var(--muted)" tick={{ fontFamily: "IBM Plex Mono", fontSize: 11 }} />
-              <YAxis stroke="var(--muted)" tick={{ fontFamily: "IBM Plex Mono", fontSize: 11 }} domain={[0.4, 0.9]} />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Line type="monotone" dataKey="vnei" stroke="var(--primary)" strokeWidth={2.5} dot={{ r: 3, fill: "var(--primary)" }} />
-            </LineChart>
-          </ResponsiveContainer>
+          {hasVnei ? (
+            <ResponsiveContainer>
+              <LineChart data={days} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid stroke="var(--line)" strokeDasharray="3 4" vertical={false} />
+                <XAxis dataKey="d" stroke="var(--muted)" tick={{ fontFamily: "IBM Plex Mono", fontSize: 11 }} />
+                <YAxis stroke="var(--muted)" tick={{ fontFamily: "IBM Plex Mono", fontSize: 11 }} domain={[0, 1]} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Line type="monotone" dataKey="vnei" stroke="var(--primary)" strokeWidth={2.5} dot={{ r: 3, fill: "var(--primary)" }} connectNulls />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center px-6 text-center font-mono-nums text-[11px] leading-relaxed text-[color:var(--muted)]">
+              No VNEI recorded yet — zone engagement is withheld until a zone has at least 5 tracked
+              faces (privacy floor).
+            </div>
+          )}
         </ChartCard>
 
         <ChartCard title="Attendance rate" color="var(--ok)">
@@ -72,22 +107,10 @@ function TrendsPage() {
               </defs>
               <CartesianGrid stroke="var(--line)" strokeDasharray="3 4" vertical={false} />
               <XAxis dataKey="d" stroke="var(--muted)" tick={{ fontFamily: "IBM Plex Mono", fontSize: 11 }} />
-              <YAxis stroke="var(--muted)" tick={{ fontFamily: "IBM Plex Mono", fontSize: 11 }} domain={[0.7, 1]} />
-              <Tooltip contentStyle={tooltipStyle} />
+              <YAxis stroke="var(--muted)" tick={{ fontFamily: "IBM Plex Mono", fontSize: 11 }} domain={[0, 1]} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${Math.round(v * 100)}%`, "attendance"]} />
               <Area dataKey="attendance" stroke="var(--ok)" strokeWidth={2} fill="url(#g1)" />
             </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Camera coverage" color="var(--accent)">
-          <ResponsiveContainer>
-            <LineChart data={days} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid stroke="var(--line)" strokeDasharray="3 4" vertical={false} />
-              <XAxis dataKey="d" stroke="var(--muted)" tick={{ fontFamily: "IBM Plex Mono", fontSize: 11 }} />
-              <YAxis stroke="var(--muted)" tick={{ fontFamily: "IBM Plex Mono", fontSize: 11 }} domain={[0.5, 1]} />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Line type="monotone" dataKey="coverage" stroke="var(--accent)" strokeWidth={2.5} dot={{ r: 3, fill: "var(--accent)" }} />
-            </LineChart>
           </ResponsiveContainer>
         </ChartCard>
 
@@ -105,6 +128,7 @@ function TrendsPage() {
           </p>
         </div>
       </div>
+      )}
     </div>
   );
 }
