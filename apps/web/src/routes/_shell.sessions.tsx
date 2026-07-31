@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Download, ClipboardList, Users, ShieldAlert, Wrench } from "lucide-react";
+import { Download, ClipboardList, Users, ShieldAlert, Wrench, Square } from "lucide-react";
 import { fetchSessionsLive, type SessionRow } from "@/lib/data/live";
 import { fetchStudents, fetchIntervals, deriveRoster } from "@/lib/data/roster";
 import { exportSessionPdf } from "@/lib/data/report";
+import { endSession } from "@/lib/data/attendance";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_shell/sessions")({
@@ -69,6 +70,12 @@ function SessionsPage() {
   const groupOf = (mode: string): TabKey => (known.has(mode as never) ? (mode as TabKey) : "lecture");
   const countFor = (k: TabKey) => rows.filter((r) => groupOf(r.mode) === k).length;
 
+  // Reflect an ended session immediately (Live -> Ended) without a refetch.
+  const markEnded = (id: string) =>
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, ends_at: new Date().toISOString() } : r)),
+    );
+
   const tabRows = useMemo(() => rows.filter((r) => groupOf(r.mode) === tab), [rows, tab]);
   const active = TABS.find((t) => t.key === tab)!;
 
@@ -132,7 +139,7 @@ function SessionsPage() {
       ) : (
         <div className="glass-panel overflow-hidden">
           <div className="overflow-x-auto">
-            <SessionTable rows={tabRows} />
+            <SessionTable rows={tabRows} onEnded={markEnded} />
           </div>
         </div>
       )}
@@ -140,7 +147,13 @@ function SessionsPage() {
   );
 }
 
-function SessionTable({ rows }: { rows: SessionRow[] }) {
+function SessionTable({
+  rows,
+  onEnded,
+}: {
+  rows: SessionRow[];
+  onEnded: (id: string) => void;
+}) {
   return (
     <table className="w-full text-sm">
       <thead>
@@ -181,10 +194,29 @@ function SessionTable({ rows }: { rows: SessionRow[] }) {
                 {r.ends_at ? "Ended" : "Live"}
               </span>
             </td>
-            <td className="px-4 py-3 text-right">
-              <button onClick={() => exportSession(r)} className="sp-btn sp-btn-ghost h-8 text-xs">
-                <Download className="h-3.5 w-3.5" /> PDF
-              </button>
+            <td className="px-4 py-3">
+              <div className="flex items-center justify-end gap-2">
+                {!r.ends_at && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await endSession(r.id);
+                        onEnded(r.id);
+                        toast.success("Session ended");
+                      } catch {
+                        toast.error("Could not end the session");
+                      }
+                    }}
+                    className="sp-btn sp-btn-ghost h-8 text-xs text-[color:var(--bad)]"
+                    title="Close this session (stamps its end time)"
+                  >
+                    <Square className="h-3 w-3" fill="currentColor" /> End
+                  </button>
+                )}
+                <button onClick={() => exportSession(r)} className="sp-btn sp-btn-ghost h-8 text-xs">
+                  <Download className="h-3.5 w-3.5" /> PDF
+                </button>
+              </div>
             </td>
           </tr>
         ))}

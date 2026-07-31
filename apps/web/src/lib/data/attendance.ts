@@ -23,6 +23,13 @@ export async function overridePresence(
   if (!res.ok) throw new Error(`override failed: ${res.status}`);
 }
 
+/** Mark a session ended (stamps ends_at). Used to close a session that was left
+ *  open — e.g. the capture tab was shut without pressing "Save & end". */
+export async function endSession(sessionId: string): Promise<void> {
+  const res = await fetch(`${apiBase()}/v1/sessions/${sessionId}/end`, { method: "POST" });
+  if (!res.ok) throw new Error(`could not end session: ${res.status}`);
+}
+
 /** Current rotating QR token for a session (teacher screen polls this). */
 export async function fetchCheckinToken(
   sessionId: string,

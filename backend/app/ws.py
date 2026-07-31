@@ -113,13 +113,18 @@ async def capture(ws: WebSocket) -> None:
     observers: list = []
     aggregator = None
     proctor_view = None
+    session_writer = None  # kept so the end frame can close the class_sessions row
+    attached_session_id: str | None = None
     session_start = datetime.now(UTC)
 
     def _attach(session_id: str | None) -> None:
         nonlocal recorder, observers, aggregator, proctor_view
+        nonlocal session_writer, attached_session_id
         if not session_id or recorder is not None:
             return
         writer = build_writer()
+        session_writer = writer
+        attached_session_id = session_id
         id_map = _load_student_id_map()  # reg_no -> UUID, shared by presence + proctor
         recorder = SessionRecorder(
             writer=writer,
@@ -179,6 +184,16 @@ async def capture(ws: WebSocket) -> None:
                         await run_in_threadpool(aggregator.flush)
                     except Exception as exc:  # noqa: BLE001
                         logger.warning("aggregator flush failed: %s", exc)
+                # Stamp ends_at on the class_sessions row, otherwise the session
+                # reads "Live" forever in the dashboards and fetchActiveSession
+                # keeps re-attaching to a finished session.
+                if session_writer is not None and attached_session_id is not None:
+                    try:
+                        await run_in_threadpool(
+                            session_writer.end_session, attached_session_id, datetime.now(UTC)
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning("session end failed: %s", exc)
                 await ws.send_json({"type": "session_ended", "ts": ts})
                 break
             if msg.get("type") != "frame":
