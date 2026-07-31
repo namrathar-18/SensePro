@@ -114,9 +114,12 @@ function AdminPage() {
       )}
 
       {tab === "Users & roles" && (
-        <Panel title="Users & roles" hint="Roles are stored in a separate table; RLS enforced">
+        <Panel
+          title="Users & roles"
+          hint="Roles live in a separate table, enforced by RLS. Email addresses sit in auth and are never exposed to the client."
+        >
           <Table
-            head={["Name", "Email", "Role"]}
+            head={["Name", "Identifier", "Role"]}
             rows={users.map((u) => [
               <span className="text-[color:var(--ink)]">{u.name}</span>,
               <span className="font-mono-nums text-xs text-[color:var(--muted)]">{u.email}</span>,

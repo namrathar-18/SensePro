@@ -84,12 +84,28 @@ export async function fetchUsersLive(): Promise<UserRow[]> {
     .select("user_id, app_role, created_at")
     .order("created_at");
   if (error) throw error;
-  return (data ?? []).map((u) => ({
-    id: u.user_id,
-    name: ROLE_TITLE[u.app_role] ?? u.app_role,
-    email: `${u.user_id.slice(0, 8)}…`,
-    role: u.app_role,
-  }));
+  // auth.users (and therefore real email addresses) is not readable from the
+  // client by design — only the service role can see it. Resolve what we
+  // legitimately can: students carry auth_uid, so their real name + register
+  // number come from the students table. Staff accounts show their role and
+  // account id, never a fabricated address.
+  const { data: studs } = await supabase.from("students").select("auth_uid, full_name, reg_no");
+  const byAuth = new Map(
+    ((studs ?? []) as { auth_uid: string | null; full_name: string; reg_no: string }[])
+      .filter((s) => s.auth_uid)
+      .map((s) => [s.auth_uid as string, s]),
+  );
+  return (data ?? []).map((u) => {
+    const student = byAuth.get(u.user_id);
+    return {
+      id: u.user_id,
+      name: student ? student.full_name : (ROLE_TITLE[u.app_role] ?? u.app_role),
+      // Identifier shown to the admin: a student's register number, else the
+      // account id prefix. Labelled "Identifier" in the UI, not "Email".
+      email: student ? student.reg_no : `${u.user_id.slice(0, 8)}…`,
+      role: u.app_role,
+    };
+  });
 }
 
 export async function fetchZonesLive(sessionId?: string): Promise<ZoneAggregate[]> {
