@@ -12,14 +12,27 @@ export async function exportSessionPdf(opts: {
   // Loaded on demand: the PDF libs are heavy and only needed on export. A failed
   // chunk load here is almost always a stale dev/deploy asset cache, so say that
   // rather than surfacing an opaque "could not generate" (see vite optimizeDeps).
+  type AutoTableFn = typeof import("jspdf-autotable").default;
   let jsPDF: typeof import("jspdf").jsPDF;
-  let autoTable: typeof import("jspdf-autotable").default;
+  let autoTable: AutoTableFn;
   try {
     const [pdfMod, tableMod] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
     jsPDF = pdfMod.jsPDF;
-    autoTable = tableMod.default;
+    // jspdf-autotable ships CJS. Depending on who does the interop (Vite's
+    // pre-bundle in dev vs the Rollup build), the callable lands either on
+    // `default` or double-wrapped on `default.default` — resolve whichever is
+    // actually a function instead of assuming one shape.
+    const candidate = tableMod.default as unknown;
+    autoTable = (
+      typeof candidate === "function"
+        ? candidate
+        : (candidate as { default?: unknown })?.default
+    ) as AutoTableFn;
   } catch {
     throw new Error("PDF library failed to load — refresh the page and try again");
+  }
+  if (typeof autoTable !== "function") {
+    throw new Error("PDF table plugin failed to initialise — refresh and try again");
   }
   const doc = new jsPDF();
   const now = new Date();
