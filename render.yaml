@@ -1,0 +1,60 @@
+# Render blueprint for SensePro+.
+#
+# Two services: the FastAPI inference backend and the SSR frontend. Deploy with
+# Render > Blueprints > New Blueprint Instance, pointed at this repo.
+#
+# Secrets (sync: false) are NOT stored here — Render prompts for them on first
+# deploy. Never commit the Supabase service-role key.
+#
+# PLAN NOTE: the vision models (InsightFace buffalo_l ~300 MB + YOLOv8n) need
+# roughly 1 GB of RAM. The free 512 MB instance will be OOM-killed on model
+# load. Either use the `standard` plan below, or set VISION_BACKEND=stub on a
+# free instance and demo real recognition locally.
+
+services:
+  # ---------------------------------------------------------------- backend --
+  - type: web
+    name: sensepro-api
+    runtime: python
+    plan: standard # 2 GB RAM. `starter` (512 MB) cannot load the vision models.
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -e ".[insightface,supabase,proctor]"
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7" # insightface/onnxruntime wheels exist for 3.12, not 3.14
+      - key: VISION_BACKEND
+        value: insightface
+      - key: PROCTOR_BACKEND
+        value: yolo
+      - key: ROSTER_JSON
+        value: data/roster.json
+      - key: ENROLLMENT_JSON
+        value: enrollments.json # upload as a Secret File (biometric, gitignored)
+      - key: ENGAGEMENT_K_MIN
+        value: "5"
+      - key: ALLOW_ORIGINS
+        sync: false # set to the frontend URL once it is created
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false # service-role key — secret
+
+  # --------------------------------------------------------------- frontend --
+  - type: web
+    name: sensepro-web
+    runtime: node
+    plan: starter
+    rootDir: apps/web
+    buildCommand: npm ci && npm run build
+    startCommand: npm start # server-node.mjs bridges the SSR handler onto node:http
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: VITE_API_URL
+        sync: false # https://sensepro-api.onrender.com — REQUIRED for QR check-in
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false # publishable key; safe in the client (RLS protects data)
