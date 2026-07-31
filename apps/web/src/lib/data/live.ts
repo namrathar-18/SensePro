@@ -251,9 +251,9 @@ export async function fetchManagementSessions(): Promise<MgmtSession[]> {
 export async function fetchMyAttendanceLive(): Promise<AttendanceRecord[]> {
   const { data, error } = await supabase
     .from("presence_intervals")
-    .select("state, started_at, session_id, class_sessions(subject, class_section, starts_at)")
+    .select("state, started_at, session_id, class_sessions(subject, class_section, mode, starts_at)")
     .order("started_at", { ascending: false })
-    .limit(60);
+    .limit(200);
   if (error) throw error;
   const bySession = new Map<string, AttendanceRecord>();
   for (const r of (data ?? []) as Record<string, unknown>[]) {
@@ -262,15 +262,49 @@ export async function fetchMyAttendanceLive(): Promise<AttendanceRecord[]> {
     const cs = (r.class_sessions ?? {}) as {
       subject?: string;
       class_section?: string;
+      mode?: string;
       starts_at?: string;
     };
     bySession.set(sid, {
       session_id: sid,
       class_name: cs.class_section ?? "—", // the class the session was saved under
       subject: cs.subject ?? "Session",
+      mode: cs.mode ?? "lecture",
       date: cs.starts_at ?? (r.started_at as string),
       state: r.state as AttendanceRecord["state"],
     });
   }
   return [...bySession.values()];
+}
+
+/** Every session the signed-in student's class held, merged with their own
+ *  presence — so the console can show what they ATTENDED and what they MISSED,
+ *  split by session type. A session with no presence row for them is a miss. */
+export async function fetchMyAttendanceSummary(): Promise<AttendanceRecord[]> {
+  const [mine, { data: sessions }] = await Promise.all([
+    fetchMyAttendanceLive(),
+    supabase
+      .from("class_sessions")
+      .select("id, subject, class_section, mode, starts_at")
+      .order("starts_at", { ascending: false })
+      .limit(200),
+  ]);
+  const byId = new Map(mine.map((m) => [m.session_id, m]));
+  const merged: AttendanceRecord[] = (sessions ?? []).map((s: Record<string, unknown>) => {
+    const id = s.id as string;
+    const existing = byId.get(id);
+    if (existing) return existing;
+    // No presence row for this session -> the student was not recorded present.
+    return {
+      session_id: id,
+      class_name: (s.class_section as string) ?? "—",
+      subject: (s.subject as string) ?? "Session",
+      mode: (s.mode as string) ?? "lecture",
+      date: s.starts_at as string,
+      state: "ABSENT" as AttendanceRecord["state"],
+    };
+  });
+  // Anything the student has presence for but that wasn't returned above.
+  for (const m of mine) if (!merged.some((r) => r.session_id === m.session_id)) merged.push(m);
+  return merged.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
 }

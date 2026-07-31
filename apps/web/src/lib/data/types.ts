@@ -87,6 +87,7 @@ export interface AttendanceRecord {
   session_id: string;
   class_name: string; // the class/cohort, e.g. "4MCA-B"
   subject: string; // the session subject, e.g. "OS mid term"
+  mode: string; // lecture | exam | workshop
   date: string;
   state: AttendanceState;
 }
