@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Check, ShieldCheck, LoaderCircle } from "lucide-react";
 import { fetchActiveSession } from "@/lib/data/roster";
-import { overridePresence } from "@/lib/data/attendance";
+import { checkinPresent } from "@/lib/data/attendance";
 
 export const Route = createFileRoute("/verify")({
   head: () => ({ meta: [{ title: "Check in · SensePro+" }] }),
@@ -15,6 +15,7 @@ export const Route = createFileRoute("/verify")({
 function VerifyPage() {
   const [reg, setReg] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [token, setToken] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "submitting" | "done" | "error">(
     "loading",
   );
@@ -24,6 +25,7 @@ function VerifyPage() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     setReg(params.get("s") ?? "");
+    setToken(params.get("t") ?? "");
     const fromUrl = params.get("session");
     if (fromUrl) {
       setSessionId(fromUrl);
@@ -49,14 +51,23 @@ function VerifyPage() {
       setError("No live session right now — ask your teacher");
       return;
     }
+    if (!token) {
+      setError("Scan the QR shown on the teacher's screen to check in");
+      return;
+    }
     setStatus("submitting");
     setError("");
     try {
-      await overridePresence(sessionId, reg.trim(), "PRESENT");
+      await checkinPresent(sessionId, reg.trim(), token);
       setStatus("done");
-    } catch {
+    } catch (err) {
       setStatus("error");
-      setError("Couldn't check you in. Check your register number and try again.");
+      // The backend rejects a stale/forwarded token — tell them to rescan.
+      setError(
+        err instanceof Error && /expired/i.test(err.message)
+          ? "This QR has expired — scan the current code on screen."
+          : "Couldn't check you in. Check your register number and try again.",
+      );
     }
   }
 

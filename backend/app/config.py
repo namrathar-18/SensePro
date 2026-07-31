@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     gaze_window_s: float = 10.0
     gaze_pitch_down_deg: float = -25.0
     proctor_cooldown_s: float = 30.0
+    # Rotating QR check-in: the teacher screen shows a QR whose token changes
+    # every this-many seconds. A scan is accepted only if its token matches the
+    # current or previous window (so a screenshot forwarded to an absent student
+    # goes stale). Shorter = harder to cheat, but less time to type the reg no.
+    checkin_token_window_s: int = 20
     # YOLO confidence floor for proctor objects. 0.30 (not the library's 0.35)
     # so a hand-held phone at webcam distance is still caught; the human review
     # queue absorbs the few extra low-confidence candidates.

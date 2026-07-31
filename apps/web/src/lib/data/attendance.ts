@@ -23,6 +23,32 @@ export async function overridePresence(
   if (!res.ok) throw new Error(`override failed: ${res.status}`);
 }
 
+/** Current rotating QR token for a session (teacher screen polls this). */
+export async function fetchCheckinToken(
+  sessionId: string,
+): Promise<{ token: string; window_s: number }> {
+  const res = await fetch(`${apiBase()}/v1/sessions/${sessionId}/checkin-token`);
+  if (!res.ok) throw new Error(`token fetch failed: ${res.status}`);
+  return res.json();
+}
+
+/** Student self check-in via the rotating QR. Rejected if the token is stale. */
+export async function checkinPresent(
+  sessionId: string,
+  regNo: string,
+  token: string,
+): Promise<void> {
+  const res = await fetch(`${apiBase()}/v1/sessions/${sessionId}/checkin`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reg_no: regNo, token }),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error((detail as { detail?: string }).detail ?? `check-in failed: ${res.status}`);
+  }
+}
+
 export interface NewStudent {
   reg_no: string;
   full_name: string;
