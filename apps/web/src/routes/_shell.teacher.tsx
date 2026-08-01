@@ -268,9 +268,10 @@ function TeacherPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Present" value={present} suffix={`/ ${total}`} accent="ok" hint="Verified now" />
         <KpiCard label="Total roster" value={total} accent="primary" hint="Enrolled" />
+        {/* total > 0 guard: an empty roster made 0/0 render as "NaN%". */}
         <KpiCard
           label="Attendance"
-          value={Math.round((present / total) * 100)}
+          value={total > 0 ? Math.round((present / total) * 100) : 0}
           suffix="%"
           accent="accent"
           hint="Live"

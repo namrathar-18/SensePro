@@ -16,20 +16,19 @@ interface NavItem {
   to: string;
   label: string;
   icon: typeof Radio;
-  mono: string;
   roles?: AppRole[];
 }
 
 const NAV: NavItem[] = [
-  { to: "/start", label: "New Session", icon: Radio, mono: "NEW", roles: ["teacher", "admin"] },
-  { to: "/teacher", label: "Teacher", icon: Users, mono: "TCH", roles: ["teacher", "admin"] },
-  { to: "/sessions", label: "Sessions", icon: ClipboardList, mono: "SES", roles: ["teacher", "admin"] },
-  { to: "/proctor", label: "Proctor", icon: ShieldAlert, mono: "PRO", roles: ["teacher", "proctor", "admin"] },
-  { to: "/enrollment", label: "Enrollment", icon: Fingerprint, mono: "ENR", roles: ["admin"] },
-  { to: "/management", label: "Management", icon: BarChart3, mono: "MGT", roles: ["management", "admin"] },
-  { to: "/trends", label: "Trends", icon: LineChart, mono: "TRD", roles: ["management", "admin"] },
-  { to: "/admin", label: "Admin", icon: Shield, mono: "ADM", roles: ["admin"] },
-  { to: "/me", label: "Me", icon: User, mono: "ME", roles: ["student"] },
+  { to: "/start", label: "Start Session", icon: Radio, roles: ["teacher", "admin"] },
+  { to: "/teacher", label: "Live Class", icon: Users, roles: ["teacher", "admin"] },
+  { to: "/sessions", label: "Session History", icon: ClipboardList, roles: ["teacher", "admin"] },
+  { to: "/proctor", label: "Proctor Review", icon: ShieldAlert, roles: ["teacher", "proctor", "admin"] },
+  { to: "/enrollment", label: "Enroll Students", icon: Fingerprint, roles: ["admin"] },
+  { to: "/management", label: "Analytics", icon: BarChart3, roles: ["management", "admin"] },
+  { to: "/trends", label: "Trends", icon: LineChart, roles: ["management", "admin"] },
+  { to: "/admin", label: "Administration", icon: Shield, roles: ["admin"] },
+  { to: "/me", label: "My Attendance", icon: User, roles: ["student"] },
 ];
 
 export function AppShell({ children, title }: { children: ReactNode; title?: string }) {
@@ -101,9 +100,6 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
                 />
                 <Icon className={cn("h-[15px] w-[15px] transition-colors duration-200", active && "text-[color:var(--primary)]")} strokeWidth={2} />
                 <span className="flex-1 truncate">{n.label}</span>
-                <span className="font-mono-nums text-[11px] tracking-[0.14em] text-[color:var(--muted)]">
-                  {n.mono}
-                </span>
               </Link>
             </MagneticHover>
           );
