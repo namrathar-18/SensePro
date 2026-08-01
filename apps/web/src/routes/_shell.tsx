@@ -62,7 +62,7 @@ function ShellLayout() {
   if (loading) {
     return (
       <div className="app-bg flex min-h-screen items-center justify-center">
-        <div className="font-mono-nums text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        <div className="font-mono-nums text-xs uppercase tracking-[0.12em] text-[color:var(--muted)]">
           Authenticating…
         </div>
       </div>

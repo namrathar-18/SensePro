@@ -19,7 +19,8 @@
   --line-strong: rgba(0, 0, 0, 0.12);
   --ink: #1A1A1F;
   --ink-2: #3D3D45;
-  --muted: #8E8E9A;
+  /* Darkened from #8E8E9A (3.1:1 on white) to clear WCAG AA for small text. */
+  --muted: #63636E;
 
   /* ─── Accent system ─── */
   --primary: #D97706;
@@ -105,7 +106,10 @@
   --line-strong: rgba(255, 255, 255, 0.12);
   --ink: #F0EDE6;
   --ink-2: #C8C4BB;
-  --muted: #6B6B78;
+  /* #6B6B78 measured 3.82:1 against --bg, below the WCAG AA 4.5:1 floor for
+     body text — and it is used at 10-11px, well under the size where a lower
+     ratio is permitted. #9B9BA8 measures ~7:1 and keeps the muted feel. */
+  --muted: #9B9BA8;
 
   --primary: #F59E0B;
   --primary-deep: #D97706;

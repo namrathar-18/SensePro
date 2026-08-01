@@ -18,7 +18,7 @@ function NotFoundComponent() {
   return (
     <div className="app-bg flex min-h-screen items-center justify-center px-4">
       <div className="glass-panel max-w-md p-8 text-center">
-        <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
           Error · 404
         </div>
         <h1 className="mt-2 font-display text-5xl font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -50,7 +50,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="app-bg flex min-h-screen items-center justify-center px-4">
       <div className="glass-panel max-w-md p-8 text-center">
-        <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--bad)]">
+        <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--bad)]">
           Fault · runtime
         </div>
         <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-[color:var(--ink)]">

@@ -669,7 +669,7 @@ function CapturePage() {
               </div>
               <span
                 className={cn(
-                  "shrink-0 rounded px-1.5 py-0.5 font-mono-nums text-[9px] uppercase tracking-[0.14em]",
+                  "shrink-0 rounded px-1.5 py-0.5 font-mono-nums text-[11px] uppercase tracking-[0.14em]",
                   sessionInfo.mode === "exam"
                     ? "bg-[color:var(--bad)]/15 text-[color:var(--bad)]"
                     : "bg-[color:var(--primary)]/15 text-[color:var(--primary)]",
@@ -678,7 +678,7 @@ function CapturePage() {
                 {sessionInfo.mode}
               </span>
             </div>
-            <div className="truncate font-mono-nums text-[11px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+            <div className="truncate font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
               {sessionInfo.room} · SensePro+
             </div>
           </div>
@@ -691,13 +691,13 @@ function CapturePage() {
                 className="h-2.5 w-2.5 rounded-full bg-[color:var(--bad)]"
                 style={{ animation: "sensepro-pulse 1.4s ease-in-out infinite" }}
               />
-              <span className="font-mono-nums text-xs uppercase tracking-[0.2em] text-[color:var(--bad)]">
+              <span className="font-mono-nums text-xs uppercase tracking-[0.12em] text-[color:var(--bad)]">
                 Rec
               </span>
             </div>
           )}
           <div className="glass-panel-2 px-4 py-2">
-            <div className="font-mono-nums text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
               Session
             </div>
             <div className="font-mono-nums text-[26px] font-semibold leading-none text-[color:var(--ink)]">
@@ -783,7 +783,7 @@ function CapturePage() {
                   <div className="leading-tight">
                     <div
                       className={cn(
-                        "font-mono-nums text-[11px] uppercase tracking-[0.22em]",
+                        "font-mono-nums text-[11px] uppercase tracking-[0.12em]",
                         conn === "RECONNECTING"
                           ? "text-[color:var(--warn)]"
                           : "text-[color:var(--bad)]",
@@ -793,7 +793,7 @@ function CapturePage() {
                         ? "Reconnecting to inference"
                         : "Inference socket unreachable"}
                     </div>
-                    <div className="font-mono-nums text-[10px] tracking-wider text-[color:var(--muted)]">
+                    <div className="font-mono-nums text-[11px] tracking-wider text-[color:var(--muted)]">
                       {conn === "RECONNECTING"
                         ? "Roster shown below is the last verified state · session continues"
                         : `${sharedWsBase()} · will auto-retry`}
@@ -888,10 +888,10 @@ function CapturePage() {
                 </div>
               </div>
               <div className="absolute inset-x-3 top-3 rounded-md border border-[color:var(--warn)]/40 bg-[color:var(--warn)]/10 px-3 py-2">
-                <div className="font-mono-nums text-[10px] uppercase tracking-[0.22em] text-[color:var(--warn)]">
+                <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--warn)]">
                   Roster frozen · awaiting inference
                 </div>
-                <div className="mt-0.5 font-mono-nums text-[10px] text-[color:var(--muted)]">
+                <div className="mt-0.5 font-mono-nums text-[11px] text-[color:var(--muted)]">
                   Last update {lastResultAtRef.current
                     ? `${Math.floor((performance.now() - lastResultAtRef.current) / 1000)}s ago`
                     : "—"}
@@ -901,7 +901,7 @@ function CapturePage() {
           )}
           <div className="flex items-center justify-between border-b border-[color:var(--line)] px-6 py-5">
             <div>
-              <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
                 Present now
               </div>
               <div className="mt-1 flex items-baseline gap-2">
@@ -919,7 +919,7 @@ function CapturePage() {
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
             {present.length === 0 ? (
               <div className="mx-3 mt-6 rounded-md border border-dashed border-[color:var(--line)] p-6 text-center">
-                <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
                   Awaiting recognitions
                 </div>
                 <div className="mt-2 text-sm text-[color:var(--muted)]">
@@ -968,13 +968,13 @@ function CapturePage() {
           {engagement && (
             <div className="border-t border-[color:var(--line)] px-6 py-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                <div className="flex items-center gap-2 font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
                   <Activity className="h-3.5 w-3.5" /> Class engagement
                 </div>
                 {!engagement.suppressed && (
                   <span
                     className={cn(
-                      "rounded-full px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-[0.14em]",
+                      "rounded-full px-2 py-0.5 font-mono-nums text-[11px] uppercase tracking-[0.14em]",
                       engagement.head_down > 0 || engagement.looking_away > 0 || engagement.phone > 0
                         ? "bg-[color:var(--warn)]/15 text-[color:var(--warn)]"
                         : "bg-[color:var(--ok)]/15 text-[color:var(--ok)]",
@@ -1030,12 +1030,12 @@ function CapturePage() {
           {sessionInfo.mode === "exam" && (
             <div className="border-t border-[color:var(--line)] px-6 py-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                <div className="flex items-center gap-2 font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
                   <ShieldAlert className="h-3.5 w-3.5" /> Proctor
                 </div>
                 <span
                   className={cn(
-                    "rounded-full px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-[0.14em]",
+                    "rounded-full px-2 py-0.5 font-mono-nums text-[11px] uppercase tracking-[0.14em]",
                     proctorLive.phone
                       ? "bg-[color:var(--bad)]/15 text-[color:var(--bad)]"
                       : "bg-[color:var(--ok)]/15 text-[color:var(--ok)]",
@@ -1083,7 +1083,7 @@ function CapturePage() {
               className="absolute right-6 top-24 z-40 w-[380px] glass-panel p-5"
             >
               <div className="flex items-center justify-between">
-                <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
                   Capture settings
                 </div>
                 <button
@@ -1096,7 +1096,7 @@ function CapturePage() {
               </div>
               <div className="mt-4 space-y-4">
                 <div>
-                  <div className="mb-1 font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+                  <div className="mb-1 font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
                     Camera
                   </div>
                   <select
@@ -1127,7 +1127,7 @@ function CapturePage() {
 
       {/* Bottom bar */}
       <footer className="flex h-24 shrink-0 items-center justify-between border-t border-[color:var(--line)] bg-[color:var(--bg)]/85 px-8 backdrop-blur">
-        <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
           {running ? "Session in progress" : "Session idle"}
         </div>
         <div className="flex items-center gap-3">
@@ -1233,7 +1233,7 @@ function IdleState() {
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/60 px-6 text-center">
-      <div className="font-mono-nums text-[11px] uppercase tracking-[0.22em] text-[color:var(--bad)]">
+      <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--bad)]">
         Camera unavailable
       </div>
       <div className="max-w-lg text-[color:var(--ink)]">{message}</div>
@@ -1260,7 +1260,7 @@ function NumberRow({
   return (
     <div>
       <div className="mb-1 flex items-center justify-between">
-        <div className="font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+        <div className="font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
           {label}
         </div>
         <div className="font-mono-nums text-xs text-[color:var(--ink)]">{value}</div>

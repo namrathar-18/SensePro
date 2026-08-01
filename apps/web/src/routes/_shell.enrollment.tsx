@@ -109,7 +109,7 @@ function AddStudentForm() {
       </form>
       {added.length > 0 && (
         <div className="mt-4 border-t border-[color:var(--line)] pt-3">
-          <div className="font-mono-nums text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
             Added this session
           </div>
           <ul className="mt-2 flex flex-wrap gap-2">
@@ -128,7 +128,7 @@ function AddStudentForm() {
 function Field({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
     <label className={className}>
-      <div className="mb-1 font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+      <div className="mb-1 font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
         {label}
       </div>
       {children}
@@ -150,7 +150,7 @@ function EnrollmentPage() {
   return (
     <div className="space-y-6">
       <header>
-        <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
           § enrollment station
         </div>
         <h2 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -170,10 +170,10 @@ function EnrollmentPage() {
         {/* Main panel */}
         <div className="glass-panel p-6">
           <div className="mb-4 flex items-center justify-between">
-            <span className="font-mono-nums text-[10px] uppercase tracking-[0.22em] text-[color:var(--accent)]">
+            <span className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--accent)]">
               step {step + 1} / {STEPS.length}
             </span>
-            <span className="font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+            <span className="font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
               {STEPS[step].k}
             </span>
           </div>
@@ -194,7 +194,7 @@ function EnrollmentPage() {
                 }}
               />
             </div>
-            <p className="mt-2 font-mono-nums text-[10px] uppercase tracking-[0.22em] text-[color:var(--muted)]">
+            <p className="mt-2 font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
               {progress}% quality
             </p>
           </div>
@@ -218,7 +218,7 @@ function EnrollmentPage() {
 
         {/* SOP checklist */}
         <ol className="glass-panel p-5">
-          <p className="mb-3 font-mono-nums text-[10px] uppercase tracking-[0.22em] text-[color:var(--muted)]">
+          <p className="mb-3 font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
             § SOP
           </p>
           {STEPS.map((s, i) => {

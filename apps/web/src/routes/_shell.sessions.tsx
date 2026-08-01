@@ -130,7 +130,7 @@ function SessionsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
           § sessions
         </div>
         <h2 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -160,7 +160,7 @@ function SessionsPage() {
             >
               <Icon className="h-3.5 w-3.5" />
               {t.title}
-              <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${activeTab ? "bg-white/20" : "bg-[color:var(--surface)]"}`}>
+              <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[11px] ${activeTab ? "bg-white/20" : "bg-[color:var(--surface)]"}`}>
                 {countFor(t.key)}
               </span>
             </button>
@@ -169,13 +169,13 @@ function SessionsPage() {
       </div>
 
       {loading ? (
-        <div className="glass-panel px-4 py-16 text-center font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        <div className="glass-panel px-4 py-16 text-center font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
           Loading sessions…
         </div>
       ) : tabRows.length === 0 ? (
         <div className="glass-panel flex flex-col items-center gap-3 px-4 py-16 text-center">
           <ClipboardList className="h-8 w-8 text-[color:var(--muted)]" />
-          <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
             No {active.title.toLowerCase()} sessions yet
           </div>
           <div className="max-w-sm text-sm text-[color:var(--muted)]">
@@ -205,7 +205,7 @@ function SessionTable({
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr className="border-b border-[color:var(--line)]/60 text-left font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+        <tr className="border-b border-[color:var(--line)]/60 text-left font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
           <th className="px-4 py-3 font-normal">When</th>
           <th className="px-4 py-3 font-normal">Session</th>
           <th className="px-4 py-3 font-normal">Cohort</th>

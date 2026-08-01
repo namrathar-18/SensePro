@@ -73,7 +73,7 @@ function StartSessionPage() {
       <div className="glass-panel space-y-7 p-6 sm:p-8">
         {/* Mode */}
         <div>
-          <div className="mb-2 sp-eyebrow text-[10px]">Session mode</div>
+          <div className="mb-2 sp-eyebrow text-[11px]">Session mode</div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {MODES.map((m) => {
               const Icon = m.icon;
@@ -98,7 +98,7 @@ function StartSessionPage() {
                     )}
                   />
                   <div className="font-display text-sm font-bold text-[color:var(--ink)]">{m.label}</div>
-                  <div className="font-mono-nums text-[10px] leading-tight text-[color:var(--muted)]">
+                  <div className="font-mono-nums text-[11px] leading-tight text-[color:var(--muted)]">
                     {m.hint}
                   </div>
                 </button>
@@ -176,7 +176,7 @@ function StartSessionPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <div className="mb-1.5 sp-eyebrow text-[10px]">{label}</div>
+      <div className="mb-1.5 sp-eyebrow text-[11px]">{label}</div>
       {children}
     </label>
   );

@@ -81,7 +81,7 @@ function ManagementPage() {
     <div className="space-y-8">
       {/* What this module is */}
       <header>
-        <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
           § management · cohort analytics
         </div>
         <h2 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -99,7 +99,7 @@ function ManagementPage() {
       <section className="glass-panel p-6">
         <header className="flex items-center justify-between">
           <div>
-            <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
               Attendance · live
             </div>
             <div className="mt-0.5 font-display text-xl font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -155,7 +155,7 @@ function ManagementPage() {
       {/* Live VNEI by zone */}
       <section className="glass-panel p-6">
         <header>
-          <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
             Engagement fairness · Live data
           </div>
           <div className="mt-0.5 font-display text-xl font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -191,7 +191,7 @@ function ManagementPage() {
       {/* ZoneStrip — camera coverage distribution */}
       <section className="glass-panel p-6">
         <header>
-          <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
             Camera coverage
           </div>
           <div className="mt-0.5 font-display text-xl font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -207,7 +207,7 @@ function ManagementPage() {
       <section className="glass-panel p-6">
         <header className="flex items-center justify-between">
           <div>
-            <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
               Room zones
             </div>
             <div className="mt-0.5 font-display text-xl font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -221,14 +221,14 @@ function ManagementPage() {
 
         {/* Legend */}
         <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-md border border-[color:var(--line)] bg-[color:var(--surface-2)]/40 px-4 py-2.5">
-          <div className="font-mono-nums text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
             Coverage legend
           </div>
           <LegendSwatch tone="ok" label="≥ 70% · reportable" />
           <LegendSwatch tone="warn" label="50–69% · caution" />
           <LegendSwatch tone="lowconf" label="< 50% · low-confidence (hatched)" />
           <LegendSwatch tone="suppressed" label="k < 5 tracked · suppressed" />
-          <div className="ml-auto font-mono-nums text-[10px] text-[color:var(--muted)]">
+          <div className="ml-auto font-mono-nums text-[11px] text-[color:var(--muted)]">
             coverage = tracked ÷ enrolled in zone
           </div>
         </div>
@@ -266,12 +266,12 @@ function ManagementPage() {
                 }
               >
                 <div className="flex items-center justify-between">
-                  <div className="font-mono-nums text-[11px] uppercase tracking-[0.22em] text-[color:var(--muted)]">
+                  <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
                     Zone · {z.zone}
                   </div>
                   <span
                     className={cn(
-                      "rounded-md border px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-wider",
+                      "rounded-md border px-2 py-0.5 font-mono-nums text-[11px] uppercase tracking-wider",
                       suppressed
                         ? "border-[color:var(--muted)]/40 bg-[color:var(--surface)] text-[color:var(--muted)]"
                         : z.coverage >= 0.7
@@ -287,19 +287,19 @@ function ManagementPage() {
 
                 {suppressed ? (
                   <div className="mt-4 flex h-[112px] flex-col items-center justify-center rounded-md border border-dashed border-[color:var(--muted)]/50 bg-[color:var(--surface)]/40 text-center">
-                    <div className="font-mono-nums text-[10px] uppercase tracking-[0.24em] text-[color:var(--muted)]">
+                    <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
                       suppressed
                     </div>
                     <div className="mt-1 font-display text-2xl font-extrabold tracking-tight text-[color:var(--muted)]">
                       k &lt; 5
                     </div>
-                    <div className="mt-1 font-mono-nums text-[10px] text-[color:var(--muted)]">
+                    <div className="mt-1 font-mono-nums text-[11px] text-[color:var(--muted)]">
                       too few tracked to report
                     </div>
                   </div>
                 ) : lowConf ? (
                   <div className="mt-4">
-                    <div className="inline-flex items-center gap-2 rounded-md border border-[color:var(--warn)]/40 bg-[color:var(--warn)]/10 px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--warn)]">
+                    <div className="inline-flex items-center gap-2 rounded-md border border-[color:var(--warn)]/40 bg-[color:var(--warn)]/10 px-2 py-0.5 font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--warn)]">
                       low-confidence
                     </div>
                     <div className="mt-2 font-display text-3xl font-extrabold tracking-tight text-[color:var(--muted)]">
@@ -341,7 +341,7 @@ function ManagementPage() {
       <section className="glass-panel p-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
               Session compare
             </div>
             <div className="mt-0.5 font-display text-xl font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -360,7 +360,7 @@ function ManagementPage() {
             if (!s) return null;
             return (
               <div key={i} className="rounded-lg border border-[color:var(--line)] bg-[color:var(--surface-2)]/60 p-5">
-                <div className="font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+                <div className="font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
                   {s.section} · {s.label}
                 </div>
                 <div className="mt-1 font-display text-lg font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -408,7 +408,7 @@ function SessionPick({
 function MiniStat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="rounded-md border border-[color:var(--line)] bg-[color:var(--surface)] px-3 py-2">
-      <div className="font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+      <div className="font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
         {label}
       </div>
       <div className={cn("mt-1 font-display text-xl font-extrabold tracking-tight", accent ? "text-[color:var(--accent)]" : "text-[color:var(--ink)]")}>

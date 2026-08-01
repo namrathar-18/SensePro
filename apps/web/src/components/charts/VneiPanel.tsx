@@ -6,7 +6,7 @@ function Badge({ tone, children }: { tone: "warn" | "muted" | "ok"; children: Re
   return (
     <span
       className={cn(
-        "rounded-md border px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-wider",
+        "rounded-md border px-2 py-0.5 font-mono-nums text-[11px] uppercase tracking-wider",
         tone === "warn" && "border-[color:var(--warn)]/40 bg-[color:var(--warn)]/10 text-[color:var(--warn)]",
         tone === "muted" && "border-[color:var(--muted)]/40 bg-[color:var(--surface)] text-[color:var(--muted)]",
         tone === "ok" && "border-[color:var(--ok)]/40 bg-[color:var(--ok)]/10 text-[color:var(--ok)]"
@@ -39,7 +39,7 @@ function ZoneBar({ row }: { row: ZoneAggregateRow | undefined }) {
         role="img"
         aria-label="suppressed: fewer than 5 tracked faces"
       >
-        <span className="font-mono text-[10.5px] tracking-wider text-muted uppercase">
+        <span className="font-mono text-[11px] tracking-wider text-muted uppercase">
           suppressed (k&lt;5)
         </span>
       </div>

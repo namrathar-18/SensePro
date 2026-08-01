@@ -123,7 +123,7 @@ function AdminPage() {
             rows={users.map((u) => [
               <span className="text-[color:var(--ink)]">{u.name}</span>,
               <span className="font-mono-nums text-xs text-[color:var(--muted)]">{u.email}</span>,
-              <span className="rounded border border-[color:var(--line)] bg-[color:var(--surface)] px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-wider text-[color:var(--accent)]">
+              <span className="rounded border border-[color:var(--line)] bg-[color:var(--surface)] px-2 py-0.5 font-mono-nums text-[11px] uppercase tracking-wider text-[color:var(--accent)]">
                 {u.role}
               </span>,
             ])}
@@ -144,7 +144,7 @@ function AdminPage() {
               </span>,
               <span
                 className={cn(
-                  "rounded border px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-wider",
+                  "rounded border px-2 py-0.5 font-mono-nums text-[11px] uppercase tracking-wider",
                   c.status === "active"
                     ? "border-[color:var(--ok)]/40 bg-[color:var(--ok)]/10 text-[color:var(--ok)]"
                     : "border-[color:var(--muted)]/40 bg-[color:var(--surface)] text-[color:var(--muted)]",
@@ -196,7 +196,7 @@ function AdminPage() {
                   {["Seq", "Time", "Actor", "Action", "prev_hash", "", "hash", "Chain"].map((h, i) => (
                     <th
                       key={i}
-                      className="px-3 py-2 text-left font-mono-nums text-[10px] uppercase tracking-[0.16em] text-[color:var(--muted)]"
+                      className="px-3 py-2 text-left font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]"
                     >
                       {h}
                     </th>
@@ -230,11 +230,11 @@ function AdminPage() {
                       </td>
                       <td className="px-3 py-2">
                         {ok ? (
-                          <span className="inline-flex items-center gap-1 rounded border border-[color:var(--ok)]/40 bg-[color:var(--ok)]/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-[color:var(--ok)]">
+                          <span className="inline-flex items-center gap-1 rounded border border-[color:var(--ok)]/40 bg-[color:var(--ok)]/10 px-1.5 py-0.5 text-[11px] uppercase tracking-wider text-[color:var(--ok)]">
                             <ShieldCheck className="h-3 w-3" /> linked
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded border border-[color:var(--bad)]/40 bg-[color:var(--bad)]/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-[color:var(--bad)]">
+                          <span className="inline-flex items-center gap-1 rounded border border-[color:var(--bad)]/40 bg-[color:var(--bad)]/10 px-1.5 py-0.5 text-[11px] uppercase tracking-wider text-[color:var(--bad)]">
                             <AlertTriangle className="h-3 w-3" /> broken
                           </span>
                         )}
@@ -274,7 +274,7 @@ function Table({ head, rows }: { head: string[]; rows: React.ReactNode[][] }) {
             {head.map((h) => (
               <th
                 key={h}
-                className="px-4 py-2 text-left font-mono-nums text-[10px] uppercase tracking-[0.16em] text-[color:var(--muted)]"
+                className="px-4 py-2 text-left font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]"
               >
                 {h}
               </th>
@@ -344,7 +344,7 @@ function DeletionRow({
       <div className="flex flex-wrap items-center gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3">
-            <span className="rounded border border-[color:var(--line)] bg-[color:var(--surface)] px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-wider text-[color:var(--muted)]">
+            <span className="rounded border border-[color:var(--line)] bg-[color:var(--surface)] px-2 py-0.5 font-mono-nums text-[11px] uppercase tracking-wider text-[color:var(--muted)]">
               {reg_no}
             </span>
             <span className="font-medium text-[color:var(--ink)]">{name}</span>

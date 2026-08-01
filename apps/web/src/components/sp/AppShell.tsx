@@ -66,7 +66,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
           <div className="font-display text-[15px] font-extrabold leading-none tracking-tight text-[color:var(--ink)]">
             SensePro<span className="text-gradient">+</span>
           </div>
-          <div className="sp-eyebrow mt-1.5 text-[9.5px] leading-none">Command Center</div>
+          <div className="sp-eyebrow mt-1.5 text-[11px] leading-none">Command Center</div>
         </div>
       </div>
 
@@ -74,7 +74,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
 
       {/* Nav */}
       <nav className="flex flex-col gap-0.5 px-3 pt-4">
-        <div className="sp-eyebrow px-3 pb-2 text-[9.5px]">Workspace</div>
+        <div className="sp-eyebrow px-3 pb-2 text-[11px]">Workspace</div>
         {items.map((n) => {
           const active = pathname.startsWith(n.to);
           const Icon = n.icon;
@@ -101,7 +101,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
                 />
                 <Icon className={cn("h-[15px] w-[15px] transition-colors duration-200", active && "text-[color:var(--primary)]")} strokeWidth={2} />
                 <span className="flex-1 truncate">{n.label}</span>
-                <span className="font-mono-nums text-[9.5px] tracking-[0.14em] text-[color:var(--muted)]">
+                <span className="font-mono-nums text-[11px] tracking-[0.14em] text-[color:var(--muted)]">
                   {n.mono}
                 </span>
               </Link>
@@ -120,7 +120,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
             <div className="truncate text-[13px] leading-tight text-[color:var(--ink)]">
               {user?.full_name ?? "Not signed in"}
             </div>
-            <div className="truncate font-mono-nums text-[10px] leading-tight text-[color:var(--muted)]">
+            <div className="truncate font-mono-nums text-[11px] leading-tight text-[color:var(--muted)]">
               {user ? ROLE_LABEL[user.role] : ""}
               {user?.reg_no ? ` · ${user.reg_no}` : ""}
             </div>
@@ -189,7 +189,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
             <h1 className="truncate font-display text-[17px] font-extrabold leading-none tracking-tight text-[color:var(--ink)]">
               {title}
             </h1>
-            <span className="sp-eyebrow text-[10px]">
+            <span className="sp-eyebrow text-[11px]">
               /{pathname.replace(/^\//, "")}
             </span>
           </div>

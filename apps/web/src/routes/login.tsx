@@ -111,7 +111,7 @@ function LoginPage() {
                   <div className="font-display text-xl font-extrabold tracking-tight">
                     SensePro<span className="text-gradient">+</span>
                   </div>
-                  <div className="font-mono-nums text-[10px] uppercase tracking-[0.22em] text-[color:var(--muted)]">
+                  <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
                     Console · Access
                   </div>
                 </div>
@@ -162,7 +162,7 @@ function LoginPage() {
                     </ShimmerButton>
 
                     <div className="pt-1">
-                      <div className="mb-2 font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+                      <div className="mb-2 font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
                         Quick demo login
                       </div>
                       <div className="grid grid-cols-3 gap-2">
@@ -209,7 +209,7 @@ function LoginPage() {
               <div className="mt-5 flex items-center justify-end border-t border-[color:var(--line)] pt-4">
                 <div className="flex items-center gap-1 text-[color:var(--muted)]">
                   <Fingerprint className="h-3 w-3" />
-                  <span className="font-mono-nums text-[10px] uppercase tracking-[0.18em]">DPDP · RLS</span>
+                  <span className="font-mono-nums text-[11px] uppercase tracking-[0.1em]">DPDP · RLS</span>
                 </div>
               </div>
             </div>
@@ -235,7 +235,7 @@ function LoginPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <div className="mb-1.5 font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+      <div className="mb-1.5 font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
         {label}
       </div>
       {children}

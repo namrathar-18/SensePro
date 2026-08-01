@@ -84,7 +84,7 @@ export function QrVerification({
           <QrCode className="h-4 w-4 text-[color:var(--primary)]" />
         </div>
         <div className="min-w-0">
-          <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
             QR check-in · unverified ({students.length})
           </div>
           <div className="text-[13px] text-[color:var(--ink)]">
@@ -107,7 +107,7 @@ export function QrVerification({
           </div>
           {sessionId && (
             <div className="w-[240px]">
-              <div className="mb-1 flex items-center justify-between font-mono-nums text-[10px] uppercase tracking-wider text-[color:var(--muted)]">
+              <div className="mb-1 flex items-center justify-between font-mono-nums text-[11px] uppercase tracking-wider text-[color:var(--muted)]">
                 <span>refreshes {windowS}s</span>
                 <span>{remaining}s</span>
               </div>
@@ -123,7 +123,7 @@ export function QrVerification({
 
         {/* Who still needs to check in */}
         <div className="min-w-0">
-          <div className="mb-2 flex items-center gap-2 font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          <div className="mb-2 flex items-center gap-2 font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
             <Users className="h-3.5 w-3.5" /> Awaiting check-in
           </div>
           {students.length === 0 ? (

@@ -51,7 +51,7 @@ function TrendsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
           § across sessions
         </div>
         <h2 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -63,12 +63,12 @@ function TrendsPage() {
       </header>
 
       {loading ? (
-        <div className="glass-panel px-4 py-16 text-center font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        <div className="glass-panel px-4 py-16 text-center font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
           Loading sessions…
         </div>
       ) : days.length === 0 ? (
         <div className="glass-panel px-4 py-16 text-center">
-          <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
             No sessions recorded yet
           </div>
           <p className="mt-2 text-sm text-[color:var(--muted)]">
@@ -115,7 +115,7 @@ function TrendsPage() {
         </ChartCard>
 
         <div className="glass-panel p-6">
-          <div className="font-mono-nums text-[10px] uppercase tracking-[0.22em] text-[color:var(--muted)]">
+          <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
             § notes
           </div>
           <h3 className="mt-1 font-display text-xl font-extrabold tracking-tight text-[color:var(--ink)]">

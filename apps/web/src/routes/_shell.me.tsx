@@ -85,7 +85,7 @@ function MePage() {
         <section className="glass-panel p-6">
           <div className="flex items-center justify-between">
             <div>
-              <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
                 Attendance · last 21 sessions
               </div>
               <div className="mt-0.5 font-display text-xl font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -120,7 +120,7 @@ function MePage() {
 
         {/* Attendance by session type — attended vs missed */}
         <section className="glass-panel p-6">
-          <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
             Attendance by type
           </div>
           <div className="mt-0.5 font-display text-lg font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -133,12 +133,12 @@ function MePage() {
                 className="rounded-lg border border-[color:var(--line)] bg-[color:var(--surface-2)]/60 p-4"
               >
                 <div className="flex items-center justify-between">
-                  <div className="font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+                  <div className="font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
                     {t.label}
                   </div>
                   <div
                     className={cn(
-                      "font-mono-nums text-[10px] uppercase tracking-wider",
+                      "font-mono-nums text-[11px] uppercase tracking-wider",
                       t.pct == null
                         ? "text-[color:var(--muted)]"
                         : t.pct >= 75
@@ -176,7 +176,7 @@ function MePage() {
         {/* Per-session list */}
         <section className="glass-panel overflow-hidden">
           <header className="border-b border-[color:var(--line)] px-5 py-4">
-            <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
               Sessions
             </div>
             <div className="mt-0.5 font-display text-lg font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -188,7 +188,7 @@ function MePage() {
               <thead className="sticky top-0 bg-[color:var(--surface)]">
                 <tr className="border-b border-[color:var(--line)]">
                   {["Date", "Class", "Type", "State"].map((h) => (
-                    <th key={h} className="px-5 py-2 text-left font-mono-nums text-[10px] uppercase tracking-[0.16em] text-[color:var(--muted)]">
+                    <th key={h} className="px-5 py-2 text-left font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
                       {h}
                     </th>
                   ))}
@@ -209,7 +209,7 @@ function MePage() {
                     <td className="px-5 py-2.5">
                       <span
                         className={cn(
-                          "rounded-full border px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-wider",
+                          "rounded-full border px-2 py-0.5 font-mono-nums text-[11px] uppercase tracking-wider",
                           h.mode === "exam"
                             ? "border-[color:var(--warn)]/30 bg-[color:var(--warn)]/10 text-[color:var(--warn)]"
                             : h.mode === "workshop"
@@ -238,7 +238,7 @@ function MePage() {
               <Hand className="h-5 w-5" />
             </div>
             <div>
-              <div className="font-mono-nums text-[11px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+              <div className="font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
                 Not marked present?
               </div>
               <div className="font-display text-lg font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -265,7 +265,7 @@ function MePage() {
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <div className="font-mono-nums text-[11px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+              <div className="font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
                 Consent status
               </div>
               <div className="font-display text-lg font-extrabold tracking-tight text-[color:var(--ok)]">
@@ -285,7 +285,7 @@ function MePage() {
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
-              <div className="font-mono-nums text-[11px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+              <div className="font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
                 Data control
               </div>
               <div className="font-display text-lg font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -380,7 +380,7 @@ function Legend() {
         { c: "var(--warn)", l: "Unverified" },
         { c: "var(--surface-2)", l: "Absent", border: true },
       ].map((x) => (
-        <div key={x.l} className="flex items-center gap-1.5 font-mono-nums text-[10px] uppercase tracking-wider text-[color:var(--muted)]">
+        <div key={x.l} className="flex items-center gap-1.5 font-mono-nums text-[11px] uppercase tracking-wider text-[color:var(--muted)]">
           <span
             className={cn("h-3 w-3 rounded-sm", x.border && "border border-[color:var(--line)]")}
             style={{ background: x.border ? "var(--surface-2)" : `color-mix(in oklab, ${x.c} 60%, transparent)` }}

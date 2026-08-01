@@ -167,7 +167,7 @@ export function BiasChart({ zones }: { zones: ZoneAggregate[] }) {
         </summary>
         <table className="mt-2 w-full max-w-sm text-left text-[12.5px]">
           <thead>
-            <tr className="border-b border-[color:var(--line)] font-mono-nums text-[10.5px] uppercase tracking-wider text-[color:var(--muted)]">
+            <tr className="border-b border-[color:var(--line)] font-mono-nums text-[11px] uppercase tracking-wider text-[color:var(--muted)]">
               <th scope="col" className="py-1.5 pr-3 font-medium">Zone</th>
               <th scope="col" className="py-1.5 pr-3 font-medium">Naive mean</th>
               <th scope="col" className="py-1.5 pr-3 font-medium">VNEI</th>

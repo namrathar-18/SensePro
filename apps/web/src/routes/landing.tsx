@@ -141,7 +141,7 @@ function LandingPage() {
             className="inline-flex items-center gap-2 rounded-full border border-[color:var(--line-strong)] bg-[color:var(--surface-2)] px-4 py-1.5"
           >
             <Zap className="h-3 w-3 text-[color:var(--primary)]" />
-            <span className="font-mono-nums text-[10px] uppercase tracking-[0.2em] text-[color:var(--ink-2)]">
+            <span className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--ink-2)]">
               Classroom Command Center
             </span>
           </motion.div>
@@ -216,7 +216,7 @@ function LandingPage() {
                   {/* Stat callout */}
                   <div className="mb-4 flex items-baseline gap-2">
                     <span className="font-display text-3xl font-extrabold text-[color:var(--ink)]">{p.stat}</span>
-                    <span className="font-mono-nums text-[10px] uppercase tracking-[0.14em] text-[color:var(--muted)]">{p.statLabel}</span>
+                    <span className="font-mono-nums text-[11px] uppercase tracking-[0.14em] text-[color:var(--muted)]">{p.statLabel}</span>
                   </div>
                   <div className="h-px bg-gradient-to-r from-transparent via-[color:var(--line-strong)] to-transparent mb-4" />
                   <p.icon className="h-5 w-5 text-[color:var(--primary)]" strokeWidth={1.8} />
@@ -242,7 +242,7 @@ function LandingPage() {
           >
             <div className="flex items-center gap-2 mb-2">
               <ShieldCheck className="h-4 w-4 text-[color:var(--accent)]" />
-              <span className="font-mono-nums text-[10px] uppercase tracking-[0.22em] text-[color:var(--accent)]">
+              <span className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--accent)]">
                 Non-negotiable
               </span>
             </div>
@@ -276,7 +276,7 @@ function LandingPage() {
           viewport={{ once: true, amount: 0.15 }}
         >
           <div className="text-center mb-10">
-            <span className="font-mono-nums text-[10px] uppercase tracking-[0.22em] text-[color:var(--muted)]">
+            <span className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
               Role-based access
             </span>
             <h2 className="mt-2 font-display text-3xl font-extrabold tracking-tight">
@@ -296,7 +296,7 @@ function LandingPage() {
                     style={{ background: `color-mix(in oklab, ${r.color} 12%, transparent)` }}
                   >
                     <div className="h-1.5 w-1.5 rounded-full" style={{ background: r.color }} />
-                    <span className="font-mono-nums text-[9px] uppercase tracking-[0.18em]" style={{ color: r.color }}>
+                    <span className="font-mono-nums text-[11px] uppercase tracking-[0.1em]" style={{ color: r.color }}>
                       {r.mono}
                     </span>
                   </div>
@@ -310,7 +310,7 @@ function LandingPage() {
 
         {/* ─── Footer ─── */}
         <footer className="border-t border-[color:var(--line)] py-8 text-center">
-          <div className="font-mono-nums text-[10px] uppercase tracking-[0.18em] text-shimmer">
+          <div className="font-mono-nums text-[11px] uppercase tracking-[0.1em] text-shimmer">
             SensePro+ · MCA Major Project · CHRIST University · 2026
           </div>
         </footer>

@@ -305,7 +305,7 @@ function TeacherPage() {
         <section className="glass-panel overflow-hidden">
           <header className="flex flex-col gap-4 border-b border-[color:var(--line)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
                 Live roster
               </div>
               <div className="mt-0.5 font-display text-lg font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -372,7 +372,7 @@ function TeacherPage() {
                   {["", "Reg no", "Name", "State (click to edit)", "Last seen"].map((h) => (
                     <th
                       key={h}
-                      className="px-4 py-2 text-left font-mono-nums text-[10px] uppercase tracking-[0.16em] text-[color:var(--muted)]"
+                      className="px-4 py-2 text-left font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]"
                     >
                       {h}
                     </th>
@@ -392,7 +392,7 @@ function TeacherPage() {
                       )}
                     >
                       <td className="w-12 px-4 py-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-md border border-[color:var(--line)] font-mono-nums text-[10px] font-semibold text-[color:var(--ink)] bg-[color:var(--surface-2)]">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-md border border-[color:var(--line)] font-mono-nums text-[11px] font-semibold text-[color:var(--ink)] bg-[color:var(--surface-2)]">
                           {r.full_name.split(" ").map((p) => p[0]).slice(0, 2).join("")}
                         </div>
                       </td>

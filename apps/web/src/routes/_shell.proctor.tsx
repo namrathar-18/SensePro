@@ -63,7 +63,7 @@ function ProctorPage() {
   return (
     <div className="space-y-6">
       <header>
-        <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
           § human-in-the-loop
         </div>
         <h2 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -81,7 +81,7 @@ function ProctorPage() {
         {/* Flag list */}
         <div className="glass-panel overflow-hidden">
           <div className="border-b border-[color:var(--line)] px-4 py-3">
-            <div className="font-mono-nums text-[10px] uppercase tracking-[0.22em] text-[color:var(--muted)]">
+            <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
               {pending.length} pending review
             </div>
           </div>
@@ -115,7 +115,7 @@ function ProctorPage() {
                     {f.session}
                   </div>
                   <div className="mt-1.5">
-                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono-nums text-[10px] uppercase tracking-[0.16em] ${severityOf(f.type).cls}`}>
+                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 font-mono-nums text-[11px] uppercase tracking-[0.1em] ${severityOf(f.type).cls}`}>
                       {severityOf(f.type).label} priority
                     </span>
                   </div>
@@ -137,7 +137,7 @@ function ProctorPage() {
             <div>
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="font-mono-nums text-[10px] uppercase tracking-[0.22em] text-[color:var(--muted)]">
+                  <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
                     {current.id} · {current.session}
                   </div>
                   <h3 className="mt-1 font-display text-xl font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -147,7 +147,7 @@ function ProctorPage() {
                     Flagged for {current.student} at {current.ts}
                   </p>
                 </div>
-                <span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono-nums text-[10px] uppercase tracking-[0.16em] ${severityOf(current.type).cls}`}>
+                <span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono-nums text-[11px] uppercase tracking-[0.1em] ${severityOf(current.type).cls}`}>
                   {severityOf(current.type).label} priority
                 </span>
               </div>

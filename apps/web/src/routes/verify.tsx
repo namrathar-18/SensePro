@@ -121,7 +121,7 @@ function VerifyPage() {
             </form>
           </>
         )}
-        <div className="mt-6 flex items-center justify-center gap-1 font-mono-nums text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
+        <div className="mt-6 flex items-center justify-center gap-1 font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
           <ShieldCheck className="h-3 w-3" /> SensePro+ · QR check-in
         </div>
       </div>

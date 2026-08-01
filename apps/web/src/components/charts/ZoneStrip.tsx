@@ -33,7 +33,7 @@ export function ZoneStrip({ zones }: { zones: ZoneAggregate[] }) {
                     "repeating-linear-gradient(45deg, transparent 0 6px, rgba(128,148,176,.25) 6px 8px)",
                 }}
               >
-                <span className="font-mono-nums text-[10px] uppercase tracking-wider text-[color:var(--muted)]">
+                <span className="font-mono-nums text-[11px] uppercase tracking-wider text-[color:var(--muted)]">
                   k&lt;5
                 </span>
               </div>

@@ -93,7 +93,7 @@ export function ProctorReviewPanel({ sessionId, studentNames, onPendingCount }: 
     <section className="glass-panel overflow-hidden">
       <header className="flex items-center justify-between border-b border-[color:var(--line)] px-5 py-4">
         <div>
-          <div className="font-mono-nums text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          <div className="font-mono-nums text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
             Proctor review
           </div>
           <div className="mt-0.5 font-display text-lg font-extrabold tracking-tight text-[color:var(--ink)]">
@@ -109,7 +109,7 @@ export function ProctorReviewPanel({ sessionId, studentNames, onPendingCount }: 
             {pending.length} open · human decision required
           </div>
           {sessionId && live ? (
-            <span className="flex items-center gap-1.5 font-mono-nums text-[10px] text-[color:var(--ok)]">
+            <span className="flex items-center gap-1.5 font-mono-nums text-[11px] text-[color:var(--ok)]">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--ok)] opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-[color:var(--ok)]" />
@@ -117,7 +117,7 @@ export function ProctorReviewPanel({ sessionId, studentNames, onPendingCount }: 
               live
             </span>
           ) : sessionId ? (
-            <span className="flex items-center gap-1.5 font-mono-nums text-[10px] text-[color:var(--warn)]">
+            <span className="flex items-center gap-1.5 font-mono-nums text-[11px] text-[color:var(--warn)]">
               <WifiOff className="h-3 w-3" /> reconnecting...
             </span>
           ) : null}
@@ -170,7 +170,7 @@ export function ProctorReviewPanel({ sessionId, studentNames, onPendingCount }: 
                     </div>
                     <span
                       className={cn(
-                        "font-mono-nums text-[10px] uppercase tracking-wider",
+                        "font-mono-nums text-[11px] uppercase tracking-wider",
                         f.review_status === "pending" && "text-[color:var(--warn)]",
                         f.review_status === "dismissed" && "text-[color:var(--muted)]",
                         f.review_status === "upheld" && "text-[color:var(--bad)]",
