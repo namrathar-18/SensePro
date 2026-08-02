@@ -20,7 +20,12 @@ class InsightFaceBackend:
     def __init__(self, det_size: int = 640, det_thresh: float = 0.5) -> None:
         from insightface.app import FaceAnalysis  # lazy
 
-        self.app = FaceAnalysis(name="buffalo_l")
+        # Load ONLY the two nets this pipeline uses. buffalo_l also ships
+        # genderage and two extra landmark models, which FaceAnalysis runs on
+        # every face by default — ~250 ms/frame of work whose output we never
+        # read (measured 725 -> 477 ms/frame, 1.5x faster). The 5-point kps used
+        # for head pose come from the detector, so they survive this.
+        self.app = FaceAnalysis(name="buffalo_l", allowed_modules=["detection", "recognition"])
         self.app.prepare(ctx_id=0, det_size=(det_size, det_size), det_thresh=det_thresh)
         self._faces_cache: list = []
 
