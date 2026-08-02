@@ -13,11 +13,38 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-const QUICK: { role: Role; label: string; email: string; pwd: string }[] = [
-  { role: "teacher", label: "Teacher", email: "teacher@sensepro.app", pwd: "Teach@2026" },
-  { role: "management", label: "Management", email: "manage@sensepro.app", pwd: "Manage@2026" },
-  { role: "admin", label: "Admin", email: "admin@sensepro.app", pwd: "Admin@2026" },
-];
+/** Optional one-click demo sign-in.
+ *
+ * Passwords come from the environment and are never committed: these accounts
+ * carry staff-level read access to real student attendance data, so a password
+ * in source control is a privacy problem, not merely a security one. Set the
+ * VITE_DEMO_*_PWD vars in `.env.local` (gitignored) to enable the buttons; with
+ * none configured the block does not render.
+ */
+type QuickLogin = { role: Role; label: string; email: string; pwd: string };
+
+const QUICK: QuickLogin[] = (
+  [
+    {
+      role: "teacher",
+      label: "Teacher",
+      email: "teacher@sensepro.app",
+      pwd: import.meta.env.VITE_DEMO_TEACHER_PWD,
+    },
+    {
+      role: "management",
+      label: "Management",
+      email: "manage@sensepro.app",
+      pwd: import.meta.env.VITE_DEMO_MANAGEMENT_PWD,
+    },
+    {
+      role: "admin",
+      label: "Admin",
+      email: "admin@sensepro.app",
+      pwd: import.meta.env.VITE_DEMO_ADMIN_PWD,
+    },
+  ] as { role: Role; label: string; email: string; pwd?: string }[]
+).filter((q): q is QuickLogin => Boolean(q.pwd));
 
 function LoginPage() {
   const nav = useNavigate();
@@ -161,7 +188,7 @@ function LoginPage() {
                       {busy ? "Verifying…" : "Enter console"}
                     </ShimmerButton>
 
-                    <div className="pt-1">
+                    <div className="pt-1" hidden={QUICK.length === 0}>
                       <div className="mb-2 font-mono-nums text-[11px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
                         Quick demo login
                       </div>

@@ -74,7 +74,7 @@ photos stay put.)
 
 ### 2. Live Supabase persistence + live dashboards
 
-1. In the Supabase SQL editor for project `zhyzxunjklscataasamd`, run each migration in
+1. In the Supabase SQL editor for your project, run each migration in
    order: `supabase/migrations/0001_init.sql` … `0007_phase3_read_paths.sql`.
 2. Then run `supabase/seed.sql` (inserts the 53 students, consent records, the
    browser-capture device, and an open demo session). Idempotent — safe to re-run.
