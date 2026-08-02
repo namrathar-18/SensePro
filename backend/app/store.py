@@ -205,12 +205,18 @@ class SupabaseWriter:
         return r.json()[0]["id"], starts_at
 
     def end_session(self, session_id: str, ends_at: datetime) -> None:
+        # Ask for the updated rows back: PostgREST answers 200 even when the
+        # filter matched nothing, so without this a wrong or already-deleted id
+        # reported success and the UI said "Session ended" for a no-op.
         r = self._client.patch(
             "/class_sessions",
             params={"id": f"eq.{session_id}"},
+            headers={"Prefer": "return=representation"},
             json={"ends_at": _iso(ends_at)},
         )
         r.raise_for_status()
+        if not r.json():
+            raise ValueError(f"no session with id {session_id}")
 
     def open_interval(self, row: PresenceInterval) -> None:
         try:

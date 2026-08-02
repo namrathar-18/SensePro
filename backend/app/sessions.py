@@ -132,6 +132,9 @@ def end_session(session_id: str) -> dict:
     writer = build_writer()
     try:
         writer.end_session(session_id, datetime.now(UTC))
+    except ValueError as exc:
+        # The id does not exist (deleted, or a stale row in an open tab).
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"session end failed: {exc}") from exc
     return {"id": session_id, "ended": True}

@@ -251,8 +251,10 @@ function SessionTable({
                         await endSession(r.id);
                         onEnded(r.id);
                         toast.success("Session ended");
-                      } catch {
-                        toast.error("Could not end the session");
+                      } catch (err) {
+                        toast.error(
+                          err instanceof Error ? err.message : "Could not end the session",
+                        );
                       }
                     }}
                     className="sp-btn sp-btn-ghost h-8 text-xs text-[color:var(--bad)]"
