@@ -59,8 +59,35 @@ class SessionPipeline:
         self.reid_interval_s = reid_interval_s
         self._last_reid_pass = -1e9
         self.last_tracks: list[Track] = []
+        # Downscaled grayscale of the previous frame, for camera-motion detection.
+        self._prev_small: np.ndarray | None = None
+
+    def _camera_moved(self, frame_bgr: np.ndarray, threshold: float = 22.0) -> bool:
+        """True when the view changed enough that the faces on screen are likely
+        different people — i.e. the operator panned the laptop to another part of
+        the room.
+
+        Compares a 32x32 grayscale thumbnail against the previous frame. A person
+        moving inside a static frame shifts few pixels; swinging the camera
+        changes nearly all of them, so a whole-frame mean difference separates the
+        two cheaply (no optical flow, negligible CPU next to detection).
+        """
+        import cv2
+
+        small = cv2.cvtColor(cv2.resize(frame_bgr, (32, 32)), cv2.COLOR_BGR2GRAY).astype(np.float32)
+        prev, self._prev_small = self._prev_small, small
+        if prev is None:
+            return False
+        return float(np.mean(np.abs(small - prev))) > threshold
 
     def process_frame(self, frame_bgr: np.ndarray, ts: float) -> dict:
+        # A pan means the people on screen changed. Drop the old tracks so their
+        # identities are not inherited by whoever now occupies the same part of
+        # the frame — students already marked present stay present (the FSM
+        # latch owns attendance, not the tracker).
+        if self._camera_moved(frame_bgr):
+            self.tracker.reset()
+
         dets = self.detector.detect(frame_bgr)
         tracks = self.tracker.update(dets)
         # Exposed for frame observers (proctor/engagement) so they can reuse
