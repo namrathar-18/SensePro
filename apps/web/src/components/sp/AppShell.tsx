@@ -38,6 +38,13 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
   const nav = useNavigate();
   const items = NAV.filter((n) => !n.roles || (user ? n.roles.includes(user.role as AppRole) : false));
 
+  // Screenshot mode: append ?clean=1 to any page to hide the sidebar and the
+  // top bar, so a report screenshot shows only the page content. Read from the
+  // URL each render so it follows navigation without a reload.
+  const cleanMode =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("clean") === "1";
+
   const initials = (user?.full_name ?? "User")
     .split(/\s+/)
     .map((p) => p[0])
@@ -139,10 +146,13 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
       {/* Ambient layers */}
       <ParticleField className="fixed inset-0 -z-10" count={10} maxOpacity={0.05} speed={0.1} />
 
-      {/* Desktop sidebar */}
-      <aside className="glass-frosted sticky top-0 hidden h-screen w-[268px] shrink-0 flex-col rounded-none border-0 border-r border-[color:var(--line)] lg:flex">
-        {navContent}
-      </aside>
+      {/* Desktop sidebar — hidden in screenshot mode (?clean=1) so a report
+          screenshot captures the page content without the chrome around it. */}
+      {!cleanMode && (
+        <aside className="glass-frosted sticky top-0 hidden h-screen w-[268px] shrink-0 flex-col rounded-none border-0 border-r border-[color:var(--line)] lg:flex">
+          {navContent}
+        </aside>
+      )}
 
       {/* Mobile drawer backdrop */}
       {mobileOpen && (
@@ -171,34 +181,36 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
 
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="glass-frosted sticky top-0 z-20 flex h-14 items-center gap-4 rounded-none border-0 border-b border-[color:var(--line)] px-4 sm:px-8">
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-[color:var(--muted)] hover:bg-[color:var(--surface-2)] lg:hidden"
-            aria-label="Open navigation"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 sm:flex">
-            <h1 className="truncate font-display text-[17px] font-extrabold leading-none tracking-tight text-[color:var(--ink)]">
-              {title}
-            </h1>
-            <span className="sp-eyebrow text-[11px]">
-              /{pathname.replace(/^\//, "")}
-            </span>
-          </div>
-          <div className="ml-auto flex items-center gap-3">
-            <div
-              aria-label={new Date().toDateString()}
-              className="hidden font-mono-nums text-[11px] tracking-wide text-[color:var(--muted)] sm:block"
+        {!cleanMode && (
+          <header className="glass-frosted sticky top-0 z-20 flex h-14 items-center gap-4 rounded-none border-0 border-b border-[color:var(--line)] px-4 sm:px-8">
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-md text-[color:var(--muted)] hover:bg-[color:var(--surface-2)] lg:hidden"
+              aria-label="Open navigation"
             >
-              {new Date().toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "short" })}
+              <Menu className="h-5 w-5" />
+            </button>
+
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 sm:flex">
+              <h1 className="truncate font-display text-[17px] font-extrabold leading-none tracking-tight text-[color:var(--ink)]">
+                {title}
+              </h1>
+              <span className="sp-eyebrow text-[11px]">
+                /{pathname.replace(/^\//, "")}
+              </span>
             </div>
-            <ConnectionBadge state="LIVE" />
-          </div>
-        </header>
+            <div className="ml-auto flex items-center gap-3">
+              <div
+                aria-label={new Date().toDateString()}
+                className="hidden font-mono-nums text-[11px] tracking-wide text-[color:var(--muted)] sm:block"
+              >
+                {new Date().toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "short" })}
+              </div>
+              <ConnectionBadge state="LIVE" />
+            </div>
+          </header>
+        )}
         <AnimatePresence mode="wait">
           <motion.main
             key={pathname}
