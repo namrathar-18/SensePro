@@ -200,18 +200,30 @@ def build_observers(
     students FK — without it, attributed flags are rejected by the DB."""
     engine = None
     if mode == "exam":
-        engine = ProctorEngine(
-            detector=build_proctor_detector(),
-            suppressor=GazeSuppressor(
-                window_s=settings.gaze_window_s,
-                pitch_down_deg=settings.gaze_pitch_down_deg,
-            ),
-            writer=writer,
-            session_id=session_id,
-            session_start=session_start,
-            cooldown_s=settings.proctor_cooldown_s,
-            student_id_map=student_id_map or {},
-        )
+        # The object detector is an optional dependency stack (ultralytics ->
+        # torch). If it cannot load — e.g. a Windows Application Control policy
+        # blocking torch's DLL — the session must still run: attendance and
+        # engagement continue, phone detection is reported unavailable. Letting
+        # the import error escape here killed the capture WebSocket outright.
+        try:
+            engine = ProctorEngine(
+                detector=build_proctor_detector(),
+                suppressor=GazeSuppressor(
+                    window_s=settings.gaze_window_s,
+                    pitch_down_deg=settings.gaze_pitch_down_deg,
+                ),
+                writer=writer,
+                session_id=session_id,
+                session_start=session_start,
+                cooldown_s=settings.proctor_cooldown_s,
+                student_id_map=student_id_map or {},
+            )
+        except Exception as exc:  # noqa: BLE001 — degrade, never crash capture
+            logger.warning(
+                "proctor detector unavailable — exam session continues WITHOUT "
+                "phone detection: %s", exc,
+            )
+            engine = None
     extractor = SignalExtractor(
         attend_pitch_deg=settings.engagement_head_down_pitch_deg,
         look_away_ratio=settings.engagement_look_away_ratio,
@@ -234,8 +246,15 @@ def build_observers(
     # Throttled so it doesn't slow attendance panning; exam mode already detects
     # every frame via the engine, so this is skipped there.
     lecture_detector = None
-    if engine is None and settings.lecture_phone_signal:
-        lecture_detector = build_proctor_detector()
+    if mode != "exam" and settings.lecture_phone_signal:
+        try:
+            lecture_detector = build_proctor_detector()
+        except Exception as exc:  # noqa: BLE001 — the phone signal is optional
+            logger.warning(
+                "phone distraction signal unavailable — lecture continues "
+                "without it: %s", exc,
+            )
+            lecture_detector = None
     last_detect = {"ts": -1e9, "dets": []}
 
     def frame_observer(frame: np.ndarray, rel_ts: float) -> None:
